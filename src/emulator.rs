@@ -1,4 +1,5 @@
 pub mod cpu;
+pub mod memory;
 
 pub struct Console {
     memory: Vec<u8>,
