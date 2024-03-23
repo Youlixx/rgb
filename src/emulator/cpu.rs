@@ -1,6 +1,4 @@
-use super::Console;
-
-use std::rc::Rc;
+use super::memory::Memory;
 
 const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_nop,         // 0x00 : NOP
@@ -67,70 +65,70 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder, // 0x3D : DEC A
     Cpu::op_placeholder, // 0x3E : LD A,d8
     Cpu::op_placeholder, // 0x3F : CCF
-    Cpu::op_placeholder, // 0x40 : LD B,B
-    Cpu::op_placeholder, // 0x41 : LD B,C
-    Cpu::op_placeholder, // 0x42 : LD B,D
-    Cpu::op_placeholder, // 0x43 : LD B,E
-    Cpu::op_placeholder, // 0x44 : LD B,H
-    Cpu::op_placeholder, // 0x45 : LD B,L
-    Cpu::op_placeholder, // 0x46 : LD B,(HL)
-    Cpu::op_placeholder, // 0x47 : LD B,A
-    Cpu::op_placeholder, // 0x48 : LD C,B
-    Cpu::op_placeholder, // 0x49 : LD C,C
-    Cpu::op_placeholder, // 0x4A : LD C,D
-    Cpu::op_placeholder, // 0x4B : LD C,E
-    Cpu::op_placeholder, // 0x4C : LD C,H
-    Cpu::op_placeholder, // 0x4D : LD C,L
-    Cpu::op_placeholder, // 0x4E : LD C,(HL)
-    Cpu::op_placeholder, // 0x4F : LD C,A
-    Cpu::op_placeholder, // 0x50 : LD D,B
-    Cpu::op_placeholder, // 0x51 : LD D,C
-    Cpu::op_placeholder, // 0x52 : LD D,D
-    Cpu::op_placeholder, // 0x53 : LD D,E
-    Cpu::op_placeholder, // 0x54 : LD D,H
-    Cpu::op_placeholder, // 0x55 : LD D,L
-    Cpu::op_placeholder, // 0x56 : LD D,(HL)
-    Cpu::op_placeholder, // 0x57 : LD D,A
-    Cpu::op_placeholder, // 0x58 : LD E,B
-    Cpu::op_placeholder, // 0x59 : LD E,C
-    Cpu::op_placeholder, // 0x5A : LD E,D
-    Cpu::op_placeholder, // 0x5B : LD E,E
-    Cpu::op_placeholder, // 0x5C : LD E,H
-    Cpu::op_placeholder, // 0x5D : LD E,L
-    Cpu::op_placeholder, // 0x5E : LD E,(HL)
-    Cpu::op_placeholder, // 0x5F : LD E,A
-    Cpu::op_placeholder, // 0x60 : LD H,B
-    Cpu::op_placeholder, // 0x61 : LD H,C
-    Cpu::op_placeholder, // 0x62 : LD H,D
-    Cpu::op_placeholder, // 0x63 : LD H,E
-    Cpu::op_placeholder, // 0x64 : LD H,H
-    Cpu::op_placeholder, // 0x65 : LD H,L
-    Cpu::op_placeholder, // 0x66 : LD H,(HL)
-    Cpu::op_placeholder, // 0x67 : LD H,A
-    Cpu::op_placeholder, // 0x68 : LD L,B
-    Cpu::op_placeholder, // 0x69 : LD L,C
-    Cpu::op_placeholder, // 0x6A : LD L,D
-    Cpu::op_placeholder, // 0x6B : LD L,E
-    Cpu::op_placeholder, // 0x6C : LD L,H
-    Cpu::op_placeholder, // 0x6D : LD L,L
-    Cpu::op_placeholder, // 0x6E : LD L,(HL)
-    Cpu::op_placeholder, // 0x6F : LD L,A
-    Cpu::op_placeholder, // 0x70 : LD (HL),B
-    Cpu::op_placeholder, // 0x71 : LD (HL),C
-    Cpu::op_placeholder, // 0x72 : LD (HL),D
-    Cpu::op_placeholder, // 0x73 : LD (HL),E
-    Cpu::op_placeholder, // 0x74 : LD (HL),H
-    Cpu::op_placeholder, // 0x75 : LD (HL),L
-    Cpu::op_placeholder, // 0x76 : HALT
-    Cpu::op_placeholder, // 0x77 : LD (HL),A
-    Cpu::op_placeholder, // 0x78 : LD A,B
-    Cpu::op_placeholder, // 0x79 : LD A,C
-    Cpu::op_placeholder, // 0x7A : LD A,D
-    Cpu::op_placeholder, // 0x7B : LD A,E
-    Cpu::op_placeholder, // 0x7C : LD A,H
-    Cpu::op_placeholder, // 0x7D : LD A,L
-    Cpu::op_placeholder, // 0x7E : LD A,(HL)
-    Cpu::op_placeholder, // 0x7F : LD A,A
+    Cpu::op_load_b_b,    // 0x40 : LD B,B
+    Cpu::op_load_b_c,    // 0x41 : LD B,C
+    Cpu::op_load_b_d,    // 0x42 : LD B,D
+    Cpu::op_load_b_e,    // 0x43 : LD B,E
+    Cpu::op_load_b_h,    // 0x44 : LD B,H
+    Cpu::op_load_b_l,    // 0x45 : LD B,L
+    Cpu::op_load_b_hl,   // 0x46 : LD B,(HL)
+    Cpu::op_load_b_a,    // 0x47 : LD B,A
+    Cpu::op_load_c_b,    // 0x48 : LD C,B
+    Cpu::op_load_c_c,    // 0x49 : LD C,C
+    Cpu::op_load_c_d,    // 0x4A : LD C,D
+    Cpu::op_load_c_e,    // 0x4B : LD C,E
+    Cpu::op_load_c_h,    // 0x4C : LD C,H
+    Cpu::op_load_c_l,    // 0x4D : LD C,L
+    Cpu::op_load_c_hl,   // 0x4E : LD C,(HL)
+    Cpu::op_load_c_a,    // 0x4F : LD C,A
+    Cpu::op_load_d_b,    // 0x50 : LD D,B
+    Cpu::op_load_d_c,    // 0x51 : LD D,C
+    Cpu::op_load_d_d,    // 0x52 : LD D,D
+    Cpu::op_load_d_e,    // 0x53 : LD D,E
+    Cpu::op_load_d_h,    // 0x54 : LD D,H
+    Cpu::op_load_d_l,    // 0x55 : LD D,L
+    Cpu::op_load_d_hl,   // 0x56 : LD D,(HL)
+    Cpu::op_load_d_a,    // 0x57 : LD D,A
+    Cpu::op_load_e_b,    // 0x58 : LD E,B
+    Cpu::op_load_e_c,    // 0x59 : LD E,C
+    Cpu::op_load_e_d,    // 0x5A : LD E,D
+    Cpu::op_load_e_e,    // 0x5B : LD E,E
+    Cpu::op_load_e_h,    // 0x5C : LD E,H
+    Cpu::op_load_e_l,    // 0x5D : LD E,L
+    Cpu::op_load_e_hl,   // 0x5E : LD E,(HL)
+    Cpu::op_load_e_a,    // 0x5F : LD E,A
+    Cpu::op_load_h_b,    // 0x60 : LD H,B
+    Cpu::op_load_h_c,    // 0x61 : LD H,C
+    Cpu::op_load_h_d,    // 0x62 : LD H,D
+    Cpu::op_load_h_e,    // 0x63 : LD H,E
+    Cpu::op_load_h_h,    // 0x64 : LD H,H
+    Cpu::op_load_h_l,    // 0x65 : LD H,L
+    Cpu::op_load_h_hl,   // 0x66 : LD H,(HL)
+    Cpu::op_load_h_a,    // 0x67 : LD H,A
+    Cpu::op_load_l_b,    // 0x68 : LD L,B
+    Cpu::op_load_l_c,    // 0x69 : LD L,C
+    Cpu::op_load_l_d,    // 0x6A : LD L,D
+    Cpu::op_load_l_e,    // 0x6B : LD L,E
+    Cpu::op_load_l_h,    // 0x6C : LD L,H
+    Cpu::op_load_l_l,    // 0x6D : LD L,L
+    Cpu::op_load_l_hl,   // 0x6E : LD L,(HL)
+    Cpu::op_load_l_a,    // 0x6F : LD L,A
+    Cpu::op_load_hl_b,   // 0x70 : LD (HL),B
+    Cpu::op_load_hl_c,   // 0x71 : LD (HL),C
+    Cpu::op_load_hl_d,   // 0x72 : LD (HL),D
+    Cpu::op_load_hl_e,   // 0x73 : LD (HL),E
+    Cpu::op_load_hl_h,   // 0x74 : LD (HL),H
+    Cpu::op_load_hl_l,   // 0x75 : LD (HL),L
+    Cpu::op_halt,        // 0x76 : HALT
+    Cpu::op_load_hl_a,   // 0x77 : LD (HL),A
+    Cpu::op_load_a_b,    // 0x78 : LD A,B
+    Cpu::op_load_a_c,    // 0x79 : LD A,C
+    Cpu::op_load_a_d,    // 0x7A : LD A,D
+    Cpu::op_load_a_e,    // 0x7B : LD A,E
+    Cpu::op_load_a_h,    // 0x7C : LD A,H
+    Cpu::op_load_a_l,    // 0x7D : LD A,L
+    Cpu::op_load_a_hl,   // 0x7E : LD A,(HL)
+    Cpu::op_load_a_a,    // 0x7F : LD A,A
     Cpu::op_placeholder, // 0x80 : ADD A,B
     Cpu::op_placeholder, // 0x81 : ADD A,C
     Cpu::op_placeholder, // 0x82 : ADD A,D
@@ -261,16 +259,47 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder, // 0xFF : RST 38H
 ];
 
+struct CpuRegisters {
+    register_a: u8,
+    register_b: u8,
+    register_c: u8,
+    register_d: u8,
+    register_e: u8,
+    register_h: u8,
+    register_l: u8,
+}
+
+impl CpuRegisters {
+    fn new() -> Self {
+        Self {
+            register_a: 0,
+            register_b: 0,
+            register_c: 0,
+            register_d: 0,
+            register_e: 0,
+            register_h: 0,
+            register_l: 0,
+        }
+    }
+
+    fn hl(&self) -> u16 {
+        ((self.register_h as u16) << 8) | self.register_l as u16
+    }
+}
+
 pub struct Cpu {
-    console: Rc<Console>,
+    memory: Box<dyn Memory>,
     program_counter: u16,
+
+    registers: CpuRegisters,
 }
 
 impl Cpu {
-    pub fn new(console: Rc<Console>) -> Self {
+    pub fn new(memory: Box<dyn Memory>) -> Self {
         Self {
-            console,
+            memory,
             program_counter: 0,
+            registers: CpuRegisters::new(),
         }
     }
 
@@ -280,12 +309,275 @@ impl Cpu {
 
     fn op_nop(&mut self) {}
 
+    fn op_load_b_b(&mut self) {
+        self.registers.register_b = self.registers.register_b;
+    }
+
+    fn op_load_b_c(&mut self) {
+        self.registers.register_b = self.registers.register_c;
+    }
+
+    fn op_load_b_d(&mut self) {
+        self.registers.register_b = self.registers.register_d;
+    }
+
+    fn op_load_b_e(&mut self) {
+        self.registers.register_b = self.registers.register_e;
+    }
+
+    fn op_load_b_h(&mut self) {
+        self.registers.register_b = self.registers.register_h;
+    }
+
+    fn op_load_b_l(&mut self) {
+        self.registers.register_b = self.registers.register_l;
+    }
+
+    fn op_load_b_hl(&mut self) {
+        self.registers.register_b = self.memory.read(self.registers.hl());
+    }
+
+    fn op_load_b_a(&mut self) {
+        self.registers.register_b = self.registers.register_a;
+    }
+
+    fn op_load_c_b(&mut self) {
+        self.registers.register_c = self.registers.register_b;
+    }
+
+    fn op_load_c_c(&mut self) {
+        self.registers.register_c = self.registers.register_c;
+    }
+
+    fn op_load_c_d(&mut self) {
+        self.registers.register_c = self.registers.register_d;
+    }
+
+    fn op_load_c_e(&mut self) {
+        self.registers.register_c = self.registers.register_e;
+    }
+
+    fn op_load_c_h(&mut self) {
+        self.registers.register_c = self.registers.register_h;
+    }
+
+    fn op_load_c_l(&mut self) {
+        self.registers.register_c = self.registers.register_l;
+    }
+
+    fn op_load_c_hl(&mut self) {
+        self.registers.register_c = self.memory.read(self.registers.hl());
+    }
+
+    fn op_load_c_a(&mut self) {
+        self.registers.register_c = self.registers.register_a;
+    }
+
+    fn op_load_d_b(&mut self) {
+        self.registers.register_d = self.registers.register_b;
+    }
+
+    fn op_load_d_c(&mut self) {
+        self.registers.register_d = self.registers.register_c;
+    }
+
+    fn op_load_d_d(&mut self) {
+        self.registers.register_d = self.registers.register_d;
+    }
+
+    fn op_load_d_e(&mut self) {
+        self.registers.register_d = self.registers.register_e;
+    }
+
+    fn op_load_d_h(&mut self) {
+        self.registers.register_d = self.registers.register_h;
+    }
+
+    fn op_load_d_l(&mut self) {
+        self.registers.register_d = self.registers.register_l;
+    }
+
+    fn op_load_d_hl(&mut self) {
+        self.registers.register_d = self.memory.read(self.registers.hl());
+    }
+
+    fn op_load_d_a(&mut self) {
+        self.registers.register_d = self.registers.register_a;
+    }
+
+    fn op_load_e_b(&mut self) {
+        self.registers.register_e = self.registers.register_b;
+    }
+
+    fn op_load_e_c(&mut self) {
+        self.registers.register_e = self.registers.register_c;
+    }
+
+    fn op_load_e_d(&mut self) {
+        self.registers.register_e = self.registers.register_d;
+    }
+
+    fn op_load_e_e(&mut self) {
+        self.registers.register_e = self.registers.register_e;
+    }
+
+    fn op_load_e_h(&mut self) {
+        self.registers.register_e = self.registers.register_h;
+    }
+
+    fn op_load_e_l(&mut self) {
+        self.registers.register_e = self.registers.register_l;
+    }
+
+    fn op_load_e_hl(&mut self) {
+        self.registers.register_e = self.memory.read(self.registers.hl());
+    }
+
+    fn op_load_e_a(&mut self) {
+        self.registers.register_e = self.registers.register_a;
+    }
+
+    fn op_load_h_b(&mut self) {
+        self.registers.register_h = self.registers.register_b;
+    }
+
+    fn op_load_h_c(&mut self) {
+        self.registers.register_h = self.registers.register_c;
+    }
+
+    fn op_load_h_d(&mut self) {
+        self.registers.register_h = self.registers.register_d;
+    }
+
+    fn op_load_h_e(&mut self) {
+        self.registers.register_h = self.registers.register_e;
+    }
+
+    fn op_load_h_h(&mut self) {
+        self.registers.register_h = self.registers.register_h;
+    }
+
+    fn op_load_h_l(&mut self) {
+        self.registers.register_h = self.registers.register_l;
+    }
+
+    fn op_load_h_hl(&mut self) {
+        self.registers.register_h = self.memory.read(self.registers.hl());
+    }
+
+    fn op_load_h_a(&mut self) {
+        self.registers.register_h = self.registers.register_a;
+    }
+
+    fn op_load_l_b(&mut self) {
+        self.registers.register_l = self.registers.register_b;
+    }
+
+    fn op_load_l_c(&mut self) {
+        self.registers.register_l = self.registers.register_c;
+    }
+
+    fn op_load_l_d(&mut self) {
+        self.registers.register_l = self.registers.register_d;
+    }
+
+    fn op_load_l_e(&mut self) {
+        self.registers.register_l = self.registers.register_e;
+    }
+
+    fn op_load_l_h(&mut self) {
+        self.registers.register_l = self.registers.register_h;
+    }
+
+    fn op_load_l_l(&mut self) {
+        self.registers.register_l = self.registers.register_l;
+    }
+
+    fn op_load_l_hl(&mut self) {
+        self.registers.register_l = self.memory.read(self.registers.hl());
+    }
+
+    fn op_load_l_a(&mut self) {
+        self.registers.register_l = self.registers.register_a;
+    }
+
+    fn op_load_hl_b(&mut self) {
+        self.memory
+            .write(self.registers.hl(), self.registers.register_b);
+    }
+
+    fn op_load_hl_c(&mut self) {
+        self.memory
+            .write(self.registers.hl(), self.registers.register_c);
+    }
+
+    fn op_load_hl_d(&mut self) {
+        self.memory
+            .write(self.registers.hl(), self.registers.register_d);
+    }
+
+    fn op_load_hl_e(&mut self) {
+        self.memory
+            .write(self.registers.hl(), self.registers.register_e);
+    }
+
+    fn op_load_hl_h(&mut self) {
+        self.memory
+            .write(self.registers.hl(), self.registers.register_h);
+    }
+
+    fn op_load_hl_l(&mut self) {
+        self.memory
+            .write(self.registers.hl(), self.registers.register_l);
+    }
+
+    fn op_halt(&mut self) {
+        self.op_placeholder();
+    }
+
+    fn op_load_hl_a(&mut self) {
+        self.memory
+            .write(self.registers.hl(), self.registers.register_a);
+    }
+
+    fn op_load_a_b(&mut self) {
+        self.registers.register_a = self.registers.register_b;
+    }
+
+    fn op_load_a_c(&mut self) {
+        self.registers.register_a = self.registers.register_c;
+    }
+
+    fn op_load_a_d(&mut self) {
+        self.registers.register_a = self.registers.register_d;
+    }
+
+    fn op_load_a_e(&mut self) {
+        self.registers.register_a = self.registers.register_e;
+    }
+
+    fn op_load_a_h(&mut self) {
+        self.registers.register_a = self.registers.register_h;
+    }
+
+    fn op_load_a_l(&mut self) {
+        self.registers.register_a = self.registers.register_l;
+    }
+
+    fn op_load_a_hl(&mut self) {
+        self.registers.register_a = self.memory.read(self.registers.hl());
+    }
+
+    fn op_load_a_a(&mut self) {
+        self.registers.register_a = self.registers.register_a;
+    }
+
     fn op_placeholder(&mut self) {
         panic!("Opcode not implemented!")
     }
 
     fn fetch_next_byte(&mut self) -> u8 {
-        let value = self.console.read(self.program_counter);
+        let value = self.memory.read(self.program_counter);
         self.program_counter += 1;
 
         value
