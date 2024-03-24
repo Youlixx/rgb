@@ -381,6 +381,25 @@ impl Cpu {
         self.stack_push_u8((value >> 8) as u8);
         self.stack_push_u8((value & 0xFF) as u8);
     }
+
+    fn run_add_and_update_flags(&mut self, operand: u8) {
+        let result: u16 = (self.registers.register_a as u16) + (operand as u16);
+        self.status_flags = 0;
+
+        if (result & 0xFF) == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        if ((self.registers.register_a & 0xF) + (operand & 0xF)) > 0xF {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        if result > 0xFF {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        self.registers.register_a = (result & 0xFF) as u8;
+    }
 }
 
 /// Gameboy SM63 opcode implementations
@@ -1028,6 +1047,72 @@ impl Cpu {
     /// Load to the 8-bit register A, data from the 8-bit register A (1 machine cycle).
     fn op_ld_a_a(&mut self) {}
 
+    /// Opcode 0x80: [ADD A,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
+    ///
+    /// Adds to the 8-bit A register, the 8-bit register B, and stores the result back
+    /// into the A register (1 machine cycle).
+    fn op_add_a_b(&mut self) {
+        self.run_add_and_update_flags(self.registers.register_b);
+    }
+
+    /// Opcode 0x81: [ADD A,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
+    ///
+    /// Adds to the 8-bit A register, the 8-bit register C, and stores the result back
+    /// into the A register (1 machine cycle).
+    fn op_add_a_c(&mut self) {
+        self.run_add_and_update_flags(self.registers.register_c);
+    }
+
+    /// Opcode 0x82: [ADD A,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
+    ///
+    /// Adds to the 8-bit A register, the 8-bit register D, and stores the result back
+    /// into the A register (1 machine cycle).
+    fn op_add_a_d(&mut self) {
+        self.run_add_and_update_flags(self.registers.register_d);
+    }
+
+    /// Opcode 0x83: [ADD A,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
+    ///
+    /// Adds to the 8-bit A register, the 8-bit register E, and stores the result back
+    /// into the A register (1 machine cycle).
+    fn op_add_a_e(&mut self) {
+        self.run_add_and_update_flags(self.registers.register_e);
+    }
+
+    /// Opcode 0x84: [ADD A,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
+    ///
+    /// Adds to the 8-bit A register, the 8-bit register H, and stores the result back
+    /// into the A register (1 machine cycle).
+    fn op_add_a_h(&mut self) {
+        self.run_add_and_update_flags(self.registers.register_h);
+    }
+
+    /// Opcode 0x85: [ADD A,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
+    ///
+    /// Adds to the 8-bit A register, the 8-bit register L, and stores the result back
+    /// into the A register (1 machine cycle).
+    fn op_add_a_l(&mut self) {
+        self.run_add_and_update_flags(self.registers.register_l);
+    }
+
+    /// Opcode 0x86: [ADD A,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=41)
+    ///
+    /// Adds to the 8-bit A register, data from the absolute address specified by the
+    /// 16-bit register HL, and stores the result back into the A register (2 machine
+    /// cycles).
+    fn op_add_a_hl(&mut self) {
+        let operand = self.read_hl();
+        self.run_add_and_update_flags(operand);
+    }
+
+    /// Opcode 0x87: [ADD A,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
+    ///
+    /// Adds to the 8-bit A register, the 8-bit register A, and stores the result back
+    /// into the A register (1 machine cycle).
+    fn op_add_a_a(&mut self) {
+        self.run_add_and_update_flags(self.registers.register_a);
+    }
+
     /// Opcode 0xC1: [POP BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
     ///
     /// Pops to the 16-bit register BC, data from the stack memory (3 machine cycles).
@@ -1042,6 +1127,15 @@ impl Cpu {
     fn op_push_bc(&mut self) {
         self.stack_push_u8(self.registers.register_b);
         self.stack_push_u8(self.registers.register_c);
+    }
+
+    /// Opcode 0xC6: [ADD A,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=42)
+    ///
+    /// Adds to the 8-bit A register, the immediate data n, and stores the result back
+    /// into the A register. (2 machine cycles).
+    fn op_add_a_u8(&mut self) {
+        let operand = self.fetch_u8();
+        self.run_add_and_update_flags(operand);
     }
 
     /// Opcode 0xD1: [POP DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
@@ -1162,65 +1256,6 @@ impl Cpu {
     fn op_ld_a_a16(&mut self) {
         let address = self.fetch_u16();
         self.registers.register_a = self.memory.read(address);
-    }
-}
-
-impl Cpu {
-    fn op_add_a(&mut self, operand: u8) {
-        let result: u16 = (self.registers.register_a as u16) + (operand as u16);
-        self.status_flags = 0;
-
-        if (result & 0xFF) == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
-        }
-
-        if ((self.registers.register_a & 0xF) + (operand & 0xF)) > 0xF {
-            self.status_flags |= STATUS_FLAG_H;
-        }
-
-        if result > 0xFF {
-            self.status_flags |= STATUS_FLAG_C;
-        }
-
-        self.registers.register_a = (result & 0xFF) as u8;
-    }
-
-    fn op_add_a_a(&mut self) {
-        self.op_add_a(self.registers.register_a);
-    }
-
-    fn op_add_a_b(&mut self) {
-        self.op_add_a(self.registers.register_b);
-    }
-
-    fn op_add_a_c(&mut self) {
-        self.op_add_a(self.registers.register_c);
-    }
-
-    fn op_add_a_d(&mut self) {
-        self.op_add_a(self.registers.register_d);
-    }
-
-    fn op_add_a_e(&mut self) {
-        self.op_add_a(self.registers.register_e);
-    }
-
-    fn op_add_a_h(&mut self) {
-        self.op_add_a(self.registers.register_h);
-    }
-
-    fn op_add_a_l(&mut self) {
-        self.op_add_a(self.registers.register_l);
-    }
-
-    fn op_add_a_hl(&mut self) {
-        let operand = self.read_hl();
-        self.op_add_a(operand);
-    }
-
-    fn op_add_a_u8(&mut self) {
-        let operand = self.fetch_u8();
-        self.op_add_a(operand);
     }
 }
 
