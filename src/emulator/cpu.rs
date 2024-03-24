@@ -233,7 +233,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_push_hl,     // 0xE5 : PUSH HL
     Cpu::op_and_a_u8,    // 0xE6 : AND d8
     Cpu::op_placeholder, // 0xE7 : RST 20H
-    Cpu::op_add_sp_i8,   // 0xE8 : ADD SP,r8
+    Cpu::op_add_sp_r8,   // 0xE8 : ADD SP,r8
     Cpu::op_placeholder, // 0xE9 : JP (HL)
     Cpu::op_ld_a16_a,    // 0xEA : LD (a16),A
     Cpu::op_placeholder, // 0xEB : undefined
@@ -382,7 +382,7 @@ impl Cpu {
         self.stack_push_u8((value & 0xFF) as u8);
     }
 
-    fn run_add_and_update_flags(&mut self, operand: u8) {
+    fn run_add_u8_and_update_flags(&mut self, operand: u8) {
         let result: u16 = (self.registers.register_a as u16) + (operand as u16);
         self.status_flags = 0;
 
@@ -399,6 +399,24 @@ impl Cpu {
         }
 
         self.registers.register_a = (result & 0xFF) as u8;
+    }
+
+    // TODO: This op is supposed to be 2 machine cycles long, is there a dummy cycle?
+    fn run_add_u16_and_update_flags(&mut self, operand: u16) {
+        let hl = self.registers.hl();
+        let result: u32 = (hl as u32) + (operand as u32);
+
+        self.status_flags &= !(STATUS_FLAG_N | STATUS_FLAG_C | STATUS_FLAG_H);
+
+        if (((hl & 0xFFF) + (operand & 0xFFF)) & 0x1000) != 0 {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        if (result & 0x10000) != 0 {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        self.registers.set_hl((result & 0xFFFF) as u16);
     }
 
     fn run_adc_and_update_flags(&mut self, operand: u8) {
@@ -624,6 +642,14 @@ impl Cpu {
             .write(address + 1, (self.stack_pointer >> 8) as u8);
     }
 
+    /// Opcode 0x09: [ADD HL,BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
+    ///
+    /// Adds to the 16-bit HL register pair, the 16-bit register BC, and stores the
+    /// result back into the HL register pair (2 machine cycles).
+    fn op_add_hl_bc(&mut self) {
+        self.run_add_u16_and_update_flags(self.registers.bc());
+    }
+
     /// Opcode 0x0A: [LD A,(BC)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=20)
     ///
     /// Load to the 8-bit A register, data from the absolute address specified by the
@@ -708,6 +734,14 @@ impl Cpu {
     /// machine cycles).
     fn op_ld_d_d8(&mut self) {
         self.registers.register_d = self.fetch_u8();
+    }
+
+    /// Opcode 0x19: [ADD HL,DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
+    ///
+    /// Adds to the 16-bit HL register pair, the 16-bit register DE, and stores the
+    /// result back into the HL register pair (2 machine cycles).
+    fn op_add_hl_de(&mut self) {
+        self.run_add_u16_and_update_flags(self.registers.de());
     }
 
     /// Opcode 0x1A: [LD A,(DE)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=20)
@@ -796,6 +830,14 @@ impl Cpu {
     /// machine cycles).
     fn op_ld_h_d8(&mut self) {
         self.registers.register_h = self.fetch_u8();
+    }
+
+    /// Opcode 0x29: [ADD HL,HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
+    ///
+    /// Adds to the 16-bit HL register pair, the 16-bit register HL, and stores the
+    /// result back into the HL register pair (2 machine cycles).
+    fn op_add_hl_hl(&mut self) {
+        self.run_add_u16_and_update_flags(self.registers.hl());
     }
 
     /// Opcode 0x2A: [LD A,(HL+)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=32)
@@ -893,6 +935,14 @@ impl Cpu {
     fn op_ld_hl_d8(&mut self) {
         let value = self.fetch_u8();
         self.memory.write(self.registers.hl(), value);
+    }
+
+    /// Opcode 0x39: [ADD HL,SP](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
+    ///
+    /// Adds to the 16-bit HL register pair, the 16-bit register SP, and stores the
+    /// result back into the HL register pair (2 machine cycles).
+    fn op_add_hl_sp(&mut self) {
+        self.run_add_u16_and_update_flags(self.stack_pointer);
     }
 
     /// Opcode 0x3A: [LD A,(HL-)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=30)
@@ -1387,7 +1437,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the 8-bit register B, and stores the result back
     /// into the A register (1 machine cycle).
     fn op_add_a_b(&mut self) {
-        self.run_add_and_update_flags(self.registers.register_b);
+        self.run_add_u8_and_update_flags(self.registers.register_b);
     }
 
     /// Opcode 0x81: [ADD A,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
@@ -1395,7 +1445,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the 8-bit register C, and stores the result back
     /// into the A register (1 machine cycle).
     fn op_add_a_c(&mut self) {
-        self.run_add_and_update_flags(self.registers.register_c);
+        self.run_add_u8_and_update_flags(self.registers.register_c);
     }
 
     /// Opcode 0x82: [ADD A,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
@@ -1403,7 +1453,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the 8-bit register D, and stores the result back
     /// into the A register (1 machine cycle).
     fn op_add_a_d(&mut self) {
-        self.run_add_and_update_flags(self.registers.register_d);
+        self.run_add_u8_and_update_flags(self.registers.register_d);
     }
 
     /// Opcode 0x83: [ADD A,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
@@ -1411,7 +1461,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the 8-bit register E, and stores the result back
     /// into the A register (1 machine cycle).
     fn op_add_a_e(&mut self) {
-        self.run_add_and_update_flags(self.registers.register_e);
+        self.run_add_u8_and_update_flags(self.registers.register_e);
     }
 
     /// Opcode 0x84: [ADD A,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
@@ -1419,7 +1469,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the 8-bit register H, and stores the result back
     /// into the A register (1 machine cycle).
     fn op_add_a_h(&mut self) {
-        self.run_add_and_update_flags(self.registers.register_h);
+        self.run_add_u8_and_update_flags(self.registers.register_h);
     }
 
     /// Opcode 0x85: [ADD A,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
@@ -1427,7 +1477,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the 8-bit register L, and stores the result back
     /// into the A register (1 machine cycle).
     fn op_add_a_l(&mut self) {
-        self.run_add_and_update_flags(self.registers.register_l);
+        self.run_add_u8_and_update_flags(self.registers.register_l);
     }
 
     /// Opcode 0x86: [ADD A,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=41)
@@ -1437,7 +1487,7 @@ impl Cpu {
     /// cycles).
     fn op_add_a_hl(&mut self) {
         let operand = self.read_hl();
-        self.run_add_and_update_flags(operand);
+        self.run_add_u8_and_update_flags(operand);
     }
 
     /// Opcode 0x87: [ADD A,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=40)
@@ -1445,7 +1495,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the 8-bit register A, and stores the result back
     /// into the A register (1 machine cycle).
     fn op_add_a_a(&mut self) {
-        self.run_add_and_update_flags(self.registers.register_a);
+        self.run_add_u8_and_update_flags(self.registers.register_a);
     }
 
     /// Opcode 0x88: [ADC A,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=43)
@@ -1940,7 +1990,7 @@ impl Cpu {
     /// stores the result back into the A register (2 machine cycles).
     fn op_add_a_u8(&mut self) {
         let operand = self.fetch_u8();
-        self.run_add_and_update_flags(operand);
+        self.run_add_u8_and_update_flags(operand);
     }
 
     /// Opcode 0xCE: [ADC A,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=45)
@@ -2022,6 +2072,28 @@ impl Cpu {
     fn op_and_a_u8(&mut self) {
         let operand = self.fetch_u8();
         self.run_and_and_update_flags(operand);
+    }
+
+    /// Opcode 0xE8: [ADD SP,r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=75)
+    ///
+    /// Loads to the 16-bit SP register, 16-bit data calculated by adding the signed
+    /// 8-bit operand following the opcode to the 16-bit value of the SP register (4
+    /// machine cycles).
+    fn op_add_sp_r8(&mut self) {
+        let offset = self.fetch_u8() as i8;
+
+        // TODO: This op is supposed to be 4 machine cycles long, needs 2 extra dummy cycles
+        self.stack_pointer = (self.stack_pointer as i32).wrapping_add(offset as i32) as u16;
+        self.status_flags = 0;
+
+        // TODO: check type convertion...
+        if ((self.stack_pointer & 0x0F) + (offset as u16 & 0x0F)) > 0x0F {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
+            self.status_flags |= STATUS_FLAG_C;
+        }
     }
 
     /// Opcode 0xEA: [LD (a16),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=25)
@@ -2130,59 +2202,6 @@ impl Cpu {
     fn op_cp_a_u8(&mut self) {
         let operand = self.fetch_u8();
         self.run_cp_and_update_flags(operand);
-    }
-}
-
-impl Cpu {
-    // TODO: This op is supposed to be 2 machine cycles long, is there a dummy cycle?
-    fn op_add_hl(&mut self, operand: u16) {
-        let hl = self.registers.hl();
-        let result: u32 = (hl as u32) + (operand as u32);
-
-        self.status_flags &= !(STATUS_FLAG_N | STATUS_FLAG_C | STATUS_FLAG_H);
-
-        if (((hl & 0xFFF) + (operand & 0xFFF)) & 0x1000) != 0 {
-            self.status_flags |= STATUS_FLAG_H;
-        }
-
-        if (result & 0x10000) != 0 {
-            self.status_flags |= STATUS_FLAG_C;
-        }
-
-        self.registers.set_hl((result & 0xFFFF) as u16);
-    }
-
-    fn op_add_hl_bc(&mut self) {
-        self.op_add_hl(self.registers.bc());
-    }
-
-    fn op_add_hl_de(&mut self) {
-        self.op_add_hl(self.registers.de());
-    }
-
-    fn op_add_hl_hl(&mut self) {
-        self.op_add_hl(self.registers.hl());
-    }
-
-    fn op_add_hl_sp(&mut self) {
-        self.op_add_hl(self.stack_pointer);
-    }
-
-    // TODO: This op is supposed to be 4 machine cycles long, needs 2 extra dummy cycles
-    fn op_add_sp_i8(&mut self) {
-        let offset = self.fetch_u8() as i8;
-
-        self.stack_pointer = (self.stack_pointer as i32).wrapping_add(offset as i32) as u16;
-        self.status_flags = 0;
-
-        // TODO: check type convertion...
-        if ((self.stack_pointer & 0x0F) + (offset as u16 & 0x0F)) > 0x0F {
-            self.status_flags |= STATUS_FLAG_H;
-        }
-
-        if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
-            self.status_flags |= STATUS_FLAG_C;
-        }
     }
 }
 
