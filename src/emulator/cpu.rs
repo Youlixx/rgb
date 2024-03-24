@@ -496,6 +496,15 @@ impl Cpu {
             self.status_flags |= STATUS_FLAG_Z;
         }
     }
+
+    fn run_or_and_update_flags(&mut self, operand: u8) {
+        self.registers.register_a |= operand;
+        self.status_flags = STATUS_FLAG_H;
+
+        if self.registers.register_a == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+    }
 }
 
 /// Gameboy SM63 opcode implementations
@@ -1539,6 +1548,72 @@ impl Cpu {
         self.run_xor_and_update_flags(self.registers.register_a);
     }
 
+    /// Opcode 0xB0: [OR B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=62)
+    ///
+    /// Performs a bitwise OR operation between the 8-bit A register and the 8-bit
+    /// register B, and stores the result back into the A register (1 machine cycle).
+    fn op_or_a_b(&mut self) {
+        self.run_or_and_update_flags(self.registers.register_b);
+    }
+
+    /// Opcode 0xB1: [OR C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=62)
+    ///
+    /// Performs a bitwise OR operation between the 8-bit A register and the 8-bit
+    /// register C, and stores the result back into the A register (1 machine cycle).
+    fn op_or_a_c(&mut self) {
+        self.run_or_and_update_flags(self.registers.register_c);
+    }
+
+    /// Opcode 0xB2: [OR D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=62)
+    ///
+    /// Performs a bitwise OR operation between the 8-bit A register and the 8-bit
+    /// register D, and stores the result back into the A register (1 machine cycle).
+    fn op_or_a_d(&mut self) {
+        self.run_or_and_update_flags(self.registers.register_d);
+    }
+
+    /// Opcode 0xB3: [OR E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=62)
+    ///
+    /// Performs a bitwise OR operation between the 8-bit A register and the 8-bit
+    /// register E, and stores the result back into the A register (1 machine cycle).
+    fn op_or_a_e(&mut self) {
+        self.run_or_and_update_flags(self.registers.register_e);
+    }
+
+    /// Opcode 0xB4: [OR H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=62)
+    ///
+    /// Performs a bitwise OR operation between the 8-bit A register and the 8-bit
+    /// register h, and stores the result back into the A register (1 machine cycle).
+    fn op_or_a_h(&mut self) {
+        self.run_or_and_update_flags(self.registers.register_h);
+    }
+
+    /// Opcode 0xB5: [OR L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=62)
+    ///
+    /// Performs a bitwise OR operation between the 8-bit A register and the 8-bit
+    /// register L, and stores the result back into the A register (1 machine cycle).
+    fn op_or_a_l(&mut self) {
+        self.run_or_and_update_flags(self.registers.register_l);
+    }
+
+    /// Opcode 0xB6: [OR (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=63)
+    ///
+    /// Performs a bitwise OR operation between the 8-bit A register and data from the
+    /// absolute address specified by the 16-bit register HL, and stores the result
+    /// back into the A register (2 machine cycles).
+    fn op_or_a_hl(&mut self) {
+        let operand = self.read_hl();
+        self.run_or_and_update_flags(operand);
+    }
+
+    /// Opcode 0xB7: [OR A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=62)
+    ///
+    /// Performs a bitwise OR operation between the 8-bit A register and the 8-bit
+    /// register A, and stores the result back into the A register (1 machine cycle).
+    fn op_or_a_a(&mut self) {
+        self.run_or_and_update_flags(self.registers.register_a);
+    }
+
     /// Opcode 0xC1: [POP BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
     ///
     /// Pops to the 16-bit register BC, data from the stack memory (3 machine cycles).
@@ -1695,6 +1770,16 @@ impl Cpu {
         self.stack_push_u8(self.status_flags);
     }
 
+    /// Opcode 0xF6: [OR d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=64)
+    ///
+    /// Performs a bitwise OR operation between the 8-bit A register and immediate data
+    /// following the opcode, and stores the result back into the A register (2 machine
+    /// cycles).
+    fn op_or_a_u8(&mut self) {
+        let operand = self.fetch_u8();
+        self.run_or_and_update_flags(operand);
+    }
+
     /// Opcode 0xF8: [LD HL,SP+r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=39)
     ///
     /// Load to the HL register, 16-bit data calculated by adding the signed 8-bit
@@ -1784,55 +1869,6 @@ impl Cpu {
         if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
             self.status_flags |= STATUS_FLAG_C;
         }
-    }
-}
-
-impl Cpu {
-    fn op_or_a(&mut self, operand: u8) {
-        self.registers.register_a |= operand;
-        self.status_flags = STATUS_FLAG_H;
-
-        if self.registers.register_a == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
-        }
-    }
-
-    fn op_or_a_a(&mut self) {
-        self.op_or_a(self.registers.register_a);
-    }
-
-    fn op_or_a_b(&mut self) {
-        self.op_or_a(self.registers.register_b);
-    }
-
-    fn op_or_a_c(&mut self) {
-        self.op_or_a(self.registers.register_c);
-    }
-
-    fn op_or_a_d(&mut self) {
-        self.op_or_a(self.registers.register_d);
-    }
-
-    fn op_or_a_e(&mut self) {
-        self.op_or_a(self.registers.register_e);
-    }
-
-    fn op_or_a_h(&mut self) {
-        self.op_or_a(self.registers.register_h);
-    }
-
-    fn op_or_a_l(&mut self) {
-        self.op_or_a(self.registers.register_l);
-    }
-
-    fn op_or_a_hl(&mut self) {
-        let operand = self.read_hl();
-        self.op_or_a(operand);
-    }
-
-    fn op_or_a_u8(&mut self) {
-        let operand = self.fetch_u8();
-        self.op_or_a(operand);
     }
 }
 
