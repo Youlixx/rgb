@@ -194,7 +194,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_cp_a_hl,     // 0xBE : CP (HL)
     Cpu::op_cp_a_a,      // 0xBF : CP A
     Cpu::op_placeholder, // 0xC0 : RET NZ
-    Cpu::op_placeholder, // 0xC1 : POP BC
+    Cpu::op_pop_bc,      // 0xC1 : POP BC
     Cpu::op_placeholder, // 0xC2 : JP NZ,a16
     Cpu::op_placeholder, // 0xC3 : JP a16
     Cpu::op_placeholder, // 0xC4 : CALL NZ,a16
@@ -210,7 +210,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_adc_a_u8,    // 0xCE : ADC A,d8
     Cpu::op_placeholder, // 0xCF : RST 08H
     Cpu::op_placeholder, // 0xD0 : RET NC
-    Cpu::op_placeholder, // 0xD1 : POP DE
+    Cpu::op_pop_de,      // 0xD1 : POP DE
     Cpu::op_placeholder, // 0xD2 : JP NC,a16
     Cpu::op_placeholder, // 0xD3 : undefined
     Cpu::op_placeholder, // 0xD4 : CALL NC,a16
@@ -226,7 +226,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_sbc_a_u8,    // 0xDE : SBC A,d8
     Cpu::op_placeholder, // 0xDF : RST 18H
     Cpu::op_placeholder, // 0xE0 : LDH (a8),A
-    Cpu::op_placeholder, // 0xE1 : POP HL
+    Cpu::op_pop_hl,      // 0xE1 : POP HL
     Cpu::op_placeholder, // 0xE2 : LD (C),A
     Cpu::op_placeholder, // 0xE3 : undefined
     Cpu::op_placeholder, // 0xE4 : undefined
@@ -242,7 +242,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_xor_a_u8,    // 0xEE : XOR d8
     Cpu::op_placeholder, // 0xEF : RST 28H
     Cpu::op_placeholder, // 0xF0 : LDH A,(a8)
-    Cpu::op_placeholder, // 0xF1 : POP AF
+    Cpu::op_pop_af,      // 0xF1 : POP AF
     Cpu::op_placeholder, // 0xF2 : LD A,(C)
     Cpu::op_placeholder, // 0xF3 : DI
     Cpu::op_placeholder, // 0xF4 : undefined
@@ -365,6 +365,13 @@ impl Cpu {
         let msb = self.fetch_u8();
 
         (lsb as u16) | ((msb as u16) << 8)
+    }
+
+    fn stack_pop_u8(&mut self) -> u8 {
+        let value = self.memory.read(self.stack_pointer);
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
+
+        value
     }
 
     fn stack_push_u8(&mut self, value: u8) {
@@ -722,6 +729,28 @@ impl Cpu {
 
     fn op_ld_sp_hl(&mut self) {
         self.stack_pointer = self.registers.hl();
+    }
+}
+
+impl Cpu {
+    fn op_pop_af(&mut self) {
+        self.status_flags = self.stack_pop_u8();
+        self.registers.register_a = self.stack_pop_u8();
+    }
+
+    fn op_pop_bc(&mut self) {
+        self.registers.register_c = self.stack_pop_u8();
+        self.registers.register_b = self.stack_pop_u8();
+    }
+
+    fn op_pop_de(&mut self) {
+        self.registers.register_e = self.stack_pop_u8();
+        self.registers.register_d = self.stack_pop_u8();
+    }
+
+    fn op_pop_hl(&mut self) {
+        self.registers.register_l = self.stack_pop_u8();
+        self.registers.register_h = self.stack_pop_u8();
     }
 }
 
