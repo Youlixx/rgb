@@ -170,14 +170,14 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_and_a_l,       // 0xA5 : AND L
     Cpu::op_and_a_hl,      // 0xA6 : AND (HL)
     Cpu::op_and_a_a,       // 0xA7 : AND A
-    Cpu::op_placeholder,   // 0xA8 : XOR B
-    Cpu::op_placeholder,   // 0xA9 : XOR C
-    Cpu::op_placeholder,   // 0xAA : XOR D
-    Cpu::op_placeholder,   // 0xAB : XOR E
-    Cpu::op_placeholder,   // 0xAC : XOR H
-    Cpu::op_placeholder,   // 0xAD : XOR L
-    Cpu::op_placeholder,   // 0xAE : XOR (HL)
-    Cpu::op_placeholder,   // 0xAF : XOR A
+    Cpu::op_xor_a_b,       // 0xA8 : XOR B
+    Cpu::op_xor_a_c,       // 0xA9 : XOR C
+    Cpu::op_xor_a_d,       // 0xAA : XOR D
+    Cpu::op_xor_a_e,       // 0xAB : XOR E
+    Cpu::op_xor_a_h,       // 0xAC : XOR H
+    Cpu::op_xor_a_l,       // 0xAD : XOR L
+    Cpu::op_xor_a_hl,      // 0xAE : XOR (HL)
+    Cpu::op_xor_a_a,       // 0xAF : XOR A
     Cpu::op_placeholder,   // 0xB0 : OR B
     Cpu::op_placeholder,   // 0xB1 : OR C
     Cpu::op_placeholder,   // 0xB2 : OR D
@@ -803,6 +803,40 @@ impl Cpu {
 
     fn op_and_a_hl(&mut self) {
         self.registers.register_a &= self.memory.read(self.registers.hl());
+        self.status_flags = STATUS_FLAG_H;
+
+        if self.registers.register_a == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+    }
+}
+
+macro_rules! op_xor_a_r {
+    ($x:tt) => {
+        paste! {
+            fn [< op_xor_a_ $x >] (&mut self) {
+                self.registers.register_a ^= self.registers.[< register_ $x >];
+                self.status_flags = STATUS_FLAG_H;
+
+                if self.registers.register_a == 0 {
+                    self.status_flags |= STATUS_FLAG_Z;
+                }
+            }
+        }
+    };
+}
+
+impl Cpu {
+    op_xor_a_r!(b);
+    op_xor_a_r!(c);
+    op_xor_a_r!(d);
+    op_xor_a_r!(e);
+    op_xor_a_r!(h);
+    op_xor_a_r!(l);
+    op_xor_a_r!(a);
+
+    fn op_xor_a_hl(&mut self) {
+        self.registers.register_a ^= self.memory.read(self.registers.hl());
         self.status_flags = STATUS_FLAG_H;
 
         if self.registers.register_a == 0 {
