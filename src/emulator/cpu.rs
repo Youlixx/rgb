@@ -478,6 +478,15 @@ impl Cpu {
 
         self.registers.register_a = result;
     }
+
+    fn run_and_and_update_flags(&mut self, operand: u8) {
+        self.registers.register_a &= operand;
+        self.status_flags = STATUS_FLAG_H;
+
+        if self.registers.register_a == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+    }
 }
 
 /// Gameboy SM63 opcode implementations
@@ -1389,6 +1398,72 @@ impl Cpu {
         self.run_sbc_and_update_flags(self.registers.register_a);
     }
 
+    /// Opcode 0xA0: [AND B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=59)
+    ///
+    /// Performs a bitwise AND operation between the 8-bit A register and the 8-bit
+    /// register B, and stores the result back into the A register (1 machine cycle).
+    fn op_and_a_b(&mut self) {
+        self.run_and_and_update_flags(self.registers.register_b);
+    }
+
+    /// Opcode 0xA1: [AND C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=59)
+    ///
+    /// Performs a bitwise AND operation between the 8-bit A register and the 8-bit
+    /// register C, and stores the result back into the A register (1 machine cycle).
+    fn op_and_a_c(&mut self) {
+        self.run_and_and_update_flags(self.registers.register_c);
+    }
+
+    /// Opcode 0xA2: [AND D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=59)
+    ///
+    /// Performs a bitwise AND operation between the 8-bit A register and the 8-bit
+    /// register D, and stores the result back into the A register (1 machine cycle).
+    fn op_and_a_d(&mut self) {
+        self.run_and_and_update_flags(self.registers.register_d);
+    }
+
+    /// Opcode 0xA3: [AND E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=59)
+    ///
+    /// Performs a bitwise AND operation between the 8-bit A register and the 8-bit
+    /// register E, and stores the result back into the A register (1 machine cycle).
+    fn op_and_a_e(&mut self) {
+        self.run_and_and_update_flags(self.registers.register_e);
+    }
+
+    /// Opcode 0xA4: [AND H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=59)
+    ///
+    /// Performs a bitwise AND operation between the 8-bit A register and the 8-bit
+    /// register H, and stores the result back into the A register (1 machine cycle).
+    fn op_and_a_h(&mut self) {
+        self.run_and_and_update_flags(self.registers.register_h);
+    }
+
+    /// Opcode 0xA5: [AND L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=59)
+    ///
+    /// Performs a bitwise AND operation between the 8-bit A register and the 8-bit
+    /// register L, and stores the result back into the A register (1 machine cycle).
+    fn op_and_a_l(&mut self) {
+        self.run_and_and_update_flags(self.registers.register_l);
+    }
+
+    /// Opcode 0xA6: [AND (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=60)
+    ///
+    /// Performs a bitwise AND operation between the 8-bit A register and data from the
+    /// absolute address specified by the 16-bit register HL, and stores the result
+    /// back into the A register (2 machine cycles).
+    fn op_and_a_hl(&mut self) {
+        let operand = self.read_hl();
+        self.run_and_and_update_flags(operand);
+    }
+
+    /// Opcode 0xA7: [AND A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=59)
+    ///
+    /// Performs a bitwise AND operation between the 8-bit A register and the 8-bit
+    /// register A, and stores the result back into the A register (1 machine cycle).
+    fn op_and_a_a(&mut self) {
+        self.run_and_and_update_flags(self.registers.register_a);
+    }
+
     /// Opcode 0xC1: [POP BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
     ///
     /// Pops to the 16-bit register BC, data from the stack memory (3 machine cycles).
@@ -1483,6 +1558,16 @@ impl Cpu {
     fn op_push_hl(&mut self) {
         self.stack_push_u8(self.registers.register_h);
         self.stack_push_u8(self.registers.register_l);
+    }
+
+    /// Opcode 0xE6: [AND d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=61)
+    ///
+    /// Performs a bitwise AND operation between the 8-bit A register and immediate
+    /// data following the opcode, and stores the result back into the A register (2
+    /// machine cycles).
+    fn op_and_a_u8(&mut self) {
+        let operand = self.fetch_u8();
+        self.run_and_and_update_flags(operand);
     }
 
     /// Opcode 0xEA: [LD (a16),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=25)
@@ -1614,55 +1699,6 @@ impl Cpu {
         if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
             self.status_flags |= STATUS_FLAG_C;
         }
-    }
-}
-
-impl Cpu {
-    fn op_and_a(&mut self, operand: u8) {
-        self.registers.register_a &= operand;
-        self.status_flags = STATUS_FLAG_H;
-
-        if self.registers.register_a == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
-        }
-    }
-
-    fn op_and_a_a(&mut self) {
-        self.op_and_a(self.registers.register_a);
-    }
-
-    fn op_and_a_b(&mut self) {
-        self.op_and_a(self.registers.register_b);
-    }
-
-    fn op_and_a_c(&mut self) {
-        self.op_and_a(self.registers.register_c);
-    }
-
-    fn op_and_a_d(&mut self) {
-        self.op_and_a(self.registers.register_d);
-    }
-
-    fn op_and_a_e(&mut self) {
-        self.op_and_a(self.registers.register_e);
-    }
-
-    fn op_and_a_h(&mut self) {
-        self.op_and_a(self.registers.register_h);
-    }
-
-    fn op_and_a_l(&mut self) {
-        self.op_and_a(self.registers.register_l);
-    }
-
-    fn op_and_a_hl(&mut self) {
-        let operand = self.read_hl();
-        self.op_and_a(operand);
-    }
-
-    fn op_and_a_u8(&mut self) {
-        let operand = self.fetch_u8();
-        self.op_and_a(operand);
     }
 }
 
