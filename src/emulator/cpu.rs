@@ -505,6 +505,22 @@ impl Cpu {
             self.status_flags |= STATUS_FLAG_Z;
         }
     }
+
+    fn run_cp_and_update_flags(&mut self, operand: u8) {
+        self.status_flags = STATUS_FLAG_N;
+
+        if self.registers.register_a == operand {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        if (self.registers.register_a & 0xF) < (operand & 0xF) {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        if self.registers.register_a < operand {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+    }
 }
 
 /// Gameboy SM63 opcode implementations
@@ -1614,6 +1630,80 @@ impl Cpu {
         self.run_or_and_update_flags(self.registers.register_a);
     }
 
+    /// Opcode 0xB8: [CP B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=52)
+    ///
+    /// Subtracts from the 8-bit A register, the 8-bit register B, and updates flags
+    /// based on the result. This instruction is basically identical to SUB B, but does
+    /// not update the A register (1 machine cycle).
+    fn op_cp_a_b(&mut self) {
+        self.run_cp_and_update_flags(self.registers.register_b);
+    }
+
+    /// Opcode 0xB9: [CP C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=52)
+    ///
+    /// Subtracts from the 8-bit A register, the 8-bit register C, and updates flags
+    /// based on the result. This instruction is basically identical to SUB C, but does
+    /// not update the A register (1 machine cycle).
+    fn op_cp_a_c(&mut self) {
+        self.run_cp_and_update_flags(self.registers.register_c);
+    }
+
+    /// Opcode 0xBA: [CP D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=52)
+    ///
+    /// Subtracts from the 8-bit A register, the 8-bit register D, and updates flags
+    /// based on the result. This instruction is basically identical to SUB D, but does
+    /// not update the A register (1 machine cycle).
+    fn op_cp_a_d(&mut self) {
+        self.run_cp_and_update_flags(self.registers.register_d);
+    }
+
+    /// Opcode 0xBB: [CP E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=52)
+    ///
+    /// Subtracts from the 8-bit A register, the 8-bit register E, and updates flags
+    /// based on the result. This instruction is basically identical to SUB E, but does
+    /// not update the A register (1 machine cycle).
+    fn op_cp_a_e(&mut self) {
+        self.run_cp_and_update_flags(self.registers.register_e);
+    }
+
+    /// Opcode 0xBC: [CP H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=52)
+    ///
+    /// Subtracts from the 8-bit A register, the 8-bit register H, and updates flags
+    /// based on the result. This instruction is basically identical to SUB H, but does
+    /// not update the A register (1 machine cycle).
+    fn op_cp_a_h(&mut self) {
+        self.run_cp_and_update_flags(self.registers.register_h);
+    }
+
+    /// Opcode 0xBD: [CP L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=52)
+    ///
+    /// Subtracts from the 8-bit A register, the 8-bit register L, and updates flags
+    /// based on the result. This instruction is basically identical to SUB L, but does
+    /// not update the A register (1 machine cycle).
+    fn op_cp_a_l(&mut self) {
+        self.run_cp_and_update_flags(self.registers.register_l);
+    }
+
+    /// Opcode 0xBE: [CP (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=53)
+    ///
+    /// Subtracts from the 8-bit A register, data from the absolute address specified
+    /// by the 16-bit register HL, and updates flags based on the result. This
+    /// instruction is basically identical to SUB (HL), but does not update the A
+    /// register (2 machine cycles).
+    fn op_cp_a_hl(&mut self) {
+        let operand: u8 = self.read_hl();
+        self.run_cp_and_update_flags(operand);
+    }
+
+    /// Opcode 0xBF: [CP A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=52)
+    ///
+    /// Subtracts from the 8-bit A register, the 8-bit register A, and updates flags
+    /// based on the result. This instruction is basically identical to SUB A, but does
+    /// not update the A register (1 machine cycle).
+    fn op_cp_a_a(&mut self) {
+        self.run_cp_and_update_flags(self.registers.register_a);
+    }
+
     /// Opcode 0xC1: [POP BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
     ///
     /// Pops to the 16-bit register BC, data from the stack memory (3 machine cycles).
@@ -1817,6 +1907,16 @@ impl Cpu {
         let address = self.fetch_u16();
         self.registers.register_a = self.memory.read(address);
     }
+
+    /// Opcode 0xFE: [CP d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=54)
+    ///
+    /// Subtracts from the 8-bit A register, the immediate data n, and updates flags
+    /// based on the result. This instruction is basically identical to SUB d8, but
+    /// does not update the A register (2 machine cycles).
+    fn op_cp_a_u8(&mut self) {
+        let operand = self.fetch_u8();
+        self.run_cp_and_update_flags(operand);
+    }
 }
 
 impl Cpu {
@@ -1869,62 +1969,6 @@ impl Cpu {
         if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
             self.status_flags |= STATUS_FLAG_C;
         }
-    }
-}
-
-impl Cpu {
-    fn op_cp_a(&mut self, operand: u8) {
-        self.status_flags = STATUS_FLAG_N;
-
-        if self.registers.register_a == operand {
-            self.status_flags |= STATUS_FLAG_Z;
-        }
-
-        if (self.registers.register_a & 0xF) < (operand & 0xF) {
-            self.status_flags |= STATUS_FLAG_H;
-        }
-
-        if self.registers.register_a < operand {
-            self.status_flags |= STATUS_FLAG_C;
-        }
-    }
-
-    fn op_cp_a_a(&mut self) {
-        self.op_cp_a(self.registers.register_a);
-    }
-
-    fn op_cp_a_b(&mut self) {
-        self.op_cp_a(self.registers.register_b);
-    }
-
-    fn op_cp_a_c(&mut self) {
-        self.op_cp_a(self.registers.register_c);
-    }
-
-    fn op_cp_a_d(&mut self) {
-        self.op_cp_a(self.registers.register_d);
-    }
-
-    fn op_cp_a_e(&mut self) {
-        self.op_cp_a(self.registers.register_e);
-    }
-
-    fn op_cp_a_h(&mut self) {
-        self.op_cp_a(self.registers.register_h);
-    }
-
-    fn op_cp_a_l(&mut self) {
-        self.op_cp_a(self.registers.register_l);
-    }
-
-    fn op_cp_a_hl(&mut self) {
-        let operand: u8 = self.read_hl();
-        self.op_cp_a(operand);
-    }
-
-    fn op_cp_a_u8(&mut self) {
-        let operand = self.fetch_u8();
-        self.op_cp_a(operand);
     }
 }
 
