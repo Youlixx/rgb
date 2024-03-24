@@ -225,7 +225,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder, // 0xDD : undefined
     Cpu::op_sbc_a_u8,    // 0xDE : SBC A,d8
     Cpu::op_placeholder, // 0xDF : RST 18H
-    Cpu::op_placeholder, // 0xE0 : LDH (a8),A
+    Cpu::op_ldh_a8_a,    // 0xE0 : LDH (a8),A
     Cpu::op_pop_hl,      // 0xE1 : POP HL
     Cpu::op_placeholder, // 0xE2 : LD (C),A
     Cpu::op_placeholder, // 0xE3 : undefined
@@ -235,13 +235,13 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder, // 0xE7 : RST 20H
     Cpu::op_add_sp_i8,   // 0xE8 : ADD SP,r8
     Cpu::op_placeholder, // 0xE9 : JP (HL)
-    Cpu::op_placeholder, // 0xEA : LD (a16),A
+    Cpu::op_ld_a16_a,    // 0xEA : LD (a16),A
     Cpu::op_placeholder, // 0xEB : undefined
     Cpu::op_placeholder, // 0xEC : undefined
     Cpu::op_placeholder, // 0xED : undefined
     Cpu::op_xor_a_u8,    // 0xEE : XOR d8
     Cpu::op_placeholder, // 0xEF : RST 28H
-    Cpu::op_placeholder, // 0xF0 : LDH A,(a8)
+    Cpu::op_ldh_a_a8,    // 0xF0 : LDH A,(a8)
     Cpu::op_pop_af,      // 0xF1 : POP AF
     Cpu::op_placeholder, // 0xF2 : LD A,(C)
     Cpu::op_placeholder, // 0xF3 : DI
@@ -251,7 +251,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder, // 0xF7 : RST 30H
     Cpu::op_ld_hl_sp_i8, // 0xF8 : LD HL,SP+r8
     Cpu::op_ld_sp_hl,    // 0xF9 : LD SP,HL
-    Cpu::op_placeholder, // 0xFA : LD A,(a16)
+    Cpu::op_ld_a_a16,    // 0xFA : LD A,(a16)
     Cpu::op_placeholder, // 0xFB : EI
     Cpu::op_placeholder, // 0xFC : undefined
     Cpu::op_placeholder, // 0xFD : undefined
@@ -1056,6 +1056,17 @@ impl Cpu {
         self.stack_push_u8(self.registers.register_e);
     }
 
+    /// Opcode 0xE0: [LDH (a8),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=29)
+    ///
+    /// Load to the address specified by the 8-bit immediate data n, data from the
+    /// 8-bit A register. The full 16-bit absolute address is obtained by setting the
+    /// most significant byte to 0xFF and the least significant byte to the value of n,
+    /// so the possible range is 0xFF00-0xFFFF (3 machine cycles).
+    fn op_ldh_a8_a(&mut self) {
+        let address = 0xFF00 | (self.fetch_u8() as u16);
+        self.memory.write(address, self.registers.register_a);
+    }
+
     /// Opcode 0xE1: [POP HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
     ///
     /// Pops to the 16-bit register HL, data from the stack memory (3 machine cycles).
@@ -1070,6 +1081,26 @@ impl Cpu {
     fn op_push_hl(&mut self) {
         self.stack_push_u8(self.registers.register_h);
         self.stack_push_u8(self.registers.register_l);
+    }
+
+    /// Opcode 0xEA: [LD (a16),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=25)
+    ///
+    /// Load to the absolute address specified by the 16-bit operand following the
+    /// opcode, data from the 8-bit A register (4 machine cycles).
+    fn op_ld_a16_a(&mut self) {
+        let address = self.fetch_u16();
+        self.memory.write(address, self.registers.register_a);
+    }
+
+    /// Opcode 0xF0: [LDH A,(a8)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=28)
+    ///
+    /// Load to the 8-bit A register, data from the address specified by the 8-bit
+    /// immediate data n. The full 16-bit absolute address is obtained by setting the
+    /// most significant byte to 0xFF and the least significant byte to the value of n,
+    /// so the possible range is 0xFF00-0xFFFF (3 machine cycles).
+    fn op_ldh_a_a8(&mut self) {
+        let address = 0xFF00 | (self.fetch_u8() as u16);
+        self.registers.register_a = self.memory.read(address);
     }
 
     /// Opcode 0xF1: [POP AF](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
@@ -1118,6 +1149,15 @@ impl Cpu {
     /// cycles).
     fn op_ld_sp_hl(&mut self) {
         self.stack_pointer = self.registers.hl();
+    }
+
+    /// Opcode 0xFA: [LD A,(a16)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=24)
+    ///
+    /// Load to the 8-bit A register, data from the absolute address specified by the
+    /// 16-bit operand following the opcode (4 machine cycles).
+    fn op_ld_a_a16(&mut self) {
+        let address = self.fetch_u16();
+        self.registers.register_a = self.memory.read(address);
     }
 }
 
