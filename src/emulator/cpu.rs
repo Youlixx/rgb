@@ -13,7 +13,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x08 : LD (a16),SP
     Cpu::op_placeholder,   // 0x09 : ADD HL,BC
     Cpu::op_load_a_bc,     // 0x0A : LD A,(BC)
-    Cpu::op_placeholder,   // 0x0B : DEC BC
+    Cpu::op_dec_bc,        // 0x0B : DEC BC
     Cpu::op_inc_c,         // 0x0C : INC C
     Cpu::op_dec_c,         // 0x0D : DEC C
     Cpu::op_load_c_u8,     // 0x0E : LD C,d8
@@ -29,7 +29,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x18 : JR r8
     Cpu::op_placeholder,   // 0x19 : ADD HL,DE
     Cpu::op_load_a_de,     // 0x1A : LD A,(DE)
-    Cpu::op_placeholder,   // 0x1B : DEC DE
+    Cpu::op_dec_de,        // 0x1B : DEC DE
     Cpu::op_inc_e,         // 0x1C : INC E
     Cpu::op_dec_e,         // 0x1D : DEC E
     Cpu::op_load_e_u8,     // 0x1E : LD E,d8
@@ -45,7 +45,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x28 : JR Z,r8
     Cpu::op_placeholder,   // 0x29 : ADD HL,HL
     Cpu::op_load_a_hl_inc, // 0x2A : LD A,(HL+)
-    Cpu::op_placeholder,   // 0x2B : DEC HL
+    Cpu::op_dec_hl,        // 0x2B : DEC HL
     Cpu::op_inc_l,         // 0x2C : INC L
     Cpu::op_dec_l,         // 0x2D : DEC L
     Cpu::op_load_l_u8,     // 0x2E : LD L,d8
@@ -55,13 +55,13 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_load_hl_dec_a, // 0x32 : LD (HL-),A
     Cpu::op_inc_sp,        // 0x33 : INC SP
     Cpu::op_inc_hl_ind,    // 0x34 : INC (HL)
-    Cpu::op_dec_hl,        // 0x35 : DEC (HL)
+    Cpu::op_dec_hl_ind,    // 0x35 : DEC (HL)
     Cpu::op_load_hl_u8,    // 0x36 : LD (HL),d8
     Cpu::op_scf,           // 0x37 : SCF
     Cpu::op_placeholder,   // 0x38 : JR C,r8
     Cpu::op_placeholder,   // 0x39 : ADD HL,SP
     Cpu::op_load_a_hl_dec, // 0x3A : LD A,(HL-)
-    Cpu::op_placeholder,   // 0x3B : DEC SP
+    Cpu::op_dec_sp,        // 0x3B : DEC SP
     Cpu::op_inc_a,         // 0x3C : INC A
     Cpu::op_dec_a,         // 0x3D : DEC A
     Cpu::op_load_a_u8,     // 0x3E : LD A,d8
@@ -1044,11 +1044,11 @@ impl Cpu {
     }
 
     fn op_inc_de(&mut self) {
-        self.registers.set_bc(self.registers.de().wrapping_add(1));
+        self.registers.set_de(self.registers.de().wrapping_add(1));
     }
 
     fn op_inc_hl(&mut self) {
-        self.registers.set_bc(self.registers.hl().wrapping_add(1));
+        self.registers.set_hl(self.registers.hl().wrapping_add(1));
     }
 
     fn op_inc_sp(&mut self) {
@@ -1102,10 +1102,28 @@ impl Cpu {
         self.registers.register_l = self.op_dec(self.registers.register_l);
     }
 
-    fn op_dec_hl(&mut self) {
+    fn op_dec_hl_ind(&mut self) {
         let address = self.registers.hl();
         let value = self.op_dec(self.memory.read(address));
         self.memory.write(address, value);
+    }
+}
+
+impl Cpu {
+    fn op_dec_bc(&mut self) {
+        self.registers.set_bc(self.registers.bc().wrapping_sub(1));
+    }
+
+    fn op_dec_de(&mut self) {
+        self.registers.set_de(self.registers.de().wrapping_sub(1));
+    }
+
+    fn op_dec_hl(&mut self) {
+        self.registers.set_hl(self.registers.hl().wrapping_sub(1));
+    }
+
+    fn op_dec_sp(&mut self) {
+        self.stack_pointer = self.stack_pointer.wrapping_sub(1);
     }
 }
 
