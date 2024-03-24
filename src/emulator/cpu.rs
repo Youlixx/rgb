@@ -11,7 +11,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_load_b_u8,     // 0x06 : LD B,d8
     Cpu::op_placeholder,   // 0x07 : RLCA
     Cpu::op_placeholder,   // 0x08 : LD (a16),SP
-    Cpu::op_placeholder,   // 0x09 : ADD HL,BC
+    Cpu::op_add_hl_bc,     // 0x09 : ADD HL,BC
     Cpu::op_load_a_bc,     // 0x0A : LD A,(BC)
     Cpu::op_dec_bc,        // 0x0B : DEC BC
     Cpu::op_inc_c,         // 0x0C : INC C
@@ -27,7 +27,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_load_d_u8,     // 0x16 : LD D,d8
     Cpu::op_placeholder,   // 0x17 : RLA
     Cpu::op_placeholder,   // 0x18 : JR r8
-    Cpu::op_placeholder,   // 0x19 : ADD HL,DE
+    Cpu::op_add_hl_de,     // 0x19 : ADD HL,DE
     Cpu::op_load_a_de,     // 0x1A : LD A,(DE)
     Cpu::op_dec_de,        // 0x1B : DEC DE
     Cpu::op_inc_e,         // 0x1C : INC E
@@ -43,7 +43,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_load_h_u8,     // 0x26 : LD H,d8
     Cpu::op_daa,           // 0x27 : DAA
     Cpu::op_placeholder,   // 0x28 : JR Z,r8
-    Cpu::op_placeholder,   // 0x29 : ADD HL,HL
+    Cpu::op_add_hl_hl,     // 0x29 : ADD HL,HL
     Cpu::op_load_a_hl_inc, // 0x2A : LD A,(HL+)
     Cpu::op_dec_hl,        // 0x2B : DEC HL
     Cpu::op_inc_l,         // 0x2C : INC L
@@ -59,7 +59,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_load_hl_u8,    // 0x36 : LD (HL),d8
     Cpu::op_scf,           // 0x37 : SCF
     Cpu::op_placeholder,   // 0x38 : JR C,r8
-    Cpu::op_placeholder,   // 0x39 : ADD HL,SP
+    Cpu::op_add_hl_sp,     // 0x39 : ADD HL,SP
     Cpu::op_load_a_hl_dec, // 0x3A : LD A,(HL-)
     Cpu::op_dec_sp,        // 0x3B : DEC SP
     Cpu::op_inc_a,         // 0x3C : INC A
@@ -590,6 +590,42 @@ impl Cpu {
     fn op_add_a_u8(&mut self) {
         let operand = self.fetch_next_byte();
         self.op_add_a(operand);
+    }
+}
+
+impl Cpu {
+    // TODO: This op is supposed to be 2 machine cycles long, is there a dummy cycle?
+    fn op_add_hl(&mut self, operand: u16) {
+        let hl = self.registers.hl();
+        let result: u32 = (hl as u32) + (operand as u32);
+
+        self.status_flags &= !(STATUS_FLAG_N | STATUS_FLAG_C | STATUS_FLAG_H);
+
+        if (((hl & 0xFFF) + (operand & 0xFFF)) & 0x1000) != 0 {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        if (result & 0x10000) != 0 {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        self.registers.set_hl((result & 0xFFFF) as u16);
+    }
+
+    fn op_add_hl_bc(&mut self) {
+        self.op_add_hl(self.registers.bc());
+    }
+
+    fn op_add_hl_de(&mut self) {
+        self.op_add_hl(self.registers.de());
+    }
+
+    fn op_add_hl_hl(&mut self) {
+        self.op_add_hl(self.registers.hl());
+    }
+
+    fn op_add_hl_sp(&mut self) {
+        self.op_add_hl(self.stack_pointer);
     }
 }
 
