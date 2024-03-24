@@ -248,7 +248,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0xF3 : DI
     Cpu::op_placeholder,   // 0xF4 : undefined
     Cpu::op_placeholder,   // 0xF5 : PUSH AF
-    Cpu::op_placeholder,   // 0xF6 : OR d8
+    Cpu::op_or_a_u8,       // 0xF6 : OR d8
     Cpu::op_placeholder,   // 0xF7 : RST 30H
     Cpu::op_placeholder,   // 0xF8 : LD HL,SP+r8
     Cpu::op_placeholder,   // 0xF9 : LD SP,HL
@@ -872,37 +872,51 @@ impl Cpu {
     }
 }
 
-macro_rules! op_or_a_r {
-    ($x:tt) => {
-        paste! {
-            fn [< op_or_a_ $x >] (&mut self) {
-                self.registers.register_a |= self.registers.[< register_ $x >];
-                self.status_flags = STATUS_FLAG_H;
-
-                if self.registers.register_a == 0 {
-                    self.status_flags |= STATUS_FLAG_Z;
-                }
-            }
-        }
-    };
-}
-
 impl Cpu {
-    op_or_a_r!(b);
-    op_or_a_r!(c);
-    op_or_a_r!(d);
-    op_or_a_r!(e);
-    op_or_a_r!(h);
-    op_or_a_r!(l);
-    op_or_a_r!(a);
-
-    fn op_or_a_hl(&mut self) {
-        self.registers.register_a |= self.memory.read(self.registers.hl());
+    fn op_or_a(&mut self, operand: u8) {
+        self.registers.register_a |= operand;
         self.status_flags = STATUS_FLAG_H;
 
         if self.registers.register_a == 0 {
             self.status_flags |= STATUS_FLAG_Z;
         }
+    }
+
+    fn op_or_a_a(&mut self) {
+        self.op_or_a(self.registers.register_a);
+    }
+
+    fn op_or_a_b(&mut self) {
+        self.op_or_a(self.registers.register_b);
+    }
+
+    fn op_or_a_c(&mut self) {
+        self.op_or_a(self.registers.register_c);
+    }
+
+    fn op_or_a_d(&mut self) {
+        self.op_or_a(self.registers.register_d);
+    }
+
+    fn op_or_a_e(&mut self) {
+        self.op_or_a(self.registers.register_e);
+    }
+
+    fn op_or_a_h(&mut self) {
+        self.op_or_a(self.registers.register_h);
+    }
+
+    fn op_or_a_l(&mut self) {
+        self.op_or_a(self.registers.register_l);
+    }
+
+    fn op_or_a_hl(&mut self) {
+        self.op_or_a(self.memory.read(self.registers.hl()));
+    }
+
+    fn op_or_a_u8(&mut self) {
+        let operand = self.fetch_next_byte();
+        self.op_or_a(operand);
     }
 }
 
