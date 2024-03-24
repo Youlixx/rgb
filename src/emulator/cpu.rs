@@ -250,7 +250,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_or_a_u8,     // 0xF6 : OR d8
     Cpu::op_placeholder, // 0xF7 : RST 30H
     Cpu::op_placeholder, // 0xF8 : LD HL,SP+r8
-    Cpu::op_placeholder, // 0xF9 : LD SP,HL
+    Cpu::op_ld_sp_hl,    // 0xF9 : LD SP,HL
     Cpu::op_placeholder, // 0xFA : LD A,(a16)
     Cpu::op_placeholder, // 0xFB : EI
     Cpu::op_placeholder, // 0xFC : undefined
@@ -651,15 +651,6 @@ impl Cpu {
     fn op_ld_sp_u16(&mut self) {
         self.stack_pointer = self.fetch_u16();
     }
-
-    fn op_ld_u16_sp(&mut self) {
-        let address = self.fetch_u16();
-
-        self.memory
-            .write(address, (self.stack_pointer & 0xFF) as u8);
-        self.memory
-            .write(address + 1, (self.stack_pointer >> 8) as u8);
-    }
 }
 
 impl Cpu {
@@ -708,6 +699,19 @@ impl Cpu {
     fn op_ld_hl_u8(&mut self) {
         let value = self.fetch_u8();
         self.memory.write(self.registers.hl(), value);
+    }
+
+    fn op_ld_u16_sp(&mut self) {
+        let address = self.fetch_u16();
+
+        self.memory
+            .write(address, (self.stack_pointer & 0xFF) as u8);
+        self.memory
+            .write(address + 1, (self.stack_pointer >> 8) as u8);
+    }
+
+    fn op_ld_sp_hl(&mut self) {
+        self.stack_pointer = self.registers.hl();
     }
 }
 
