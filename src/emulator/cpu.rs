@@ -66,7 +66,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_dec_a,         // 0x3D : DEC A
     Cpu::op_ld_a_u8,       // 0x3E : LD A,d8
     Cpu::op_ccf,           // 0x3F : CCF
-    Cpu::op_ld_b_b,        // 0x40 : LD B,B
+    Cpu::op_nop,           // 0x40 : LD B,B
     Cpu::op_ld_b_c,        // 0x41 : LD B,C
     Cpu::op_ld_b_d,        // 0x42 : LD B,D
     Cpu::op_ld_b_e,        // 0x43 : LD B,E
@@ -75,7 +75,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_load_b_hl,     // 0x46 : LD B,(HL)
     Cpu::op_ld_b_a,        // 0x47 : LD B,A
     Cpu::op_ld_c_b,        // 0x48 : LD C,B
-    Cpu::op_ld_c_c,        // 0x49 : LD C,C
+    Cpu::op_nop,           // 0x49 : LD C,C
     Cpu::op_ld_c_d,        // 0x4A : LD C,D
     Cpu::op_ld_c_e,        // 0x4B : LD C,E
     Cpu::op_ld_c_h,        // 0x4C : LD C,H
@@ -84,7 +84,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_c_a,        // 0x4F : LD C,A
     Cpu::op_ld_d_b,        // 0x50 : LD D,B
     Cpu::op_ld_d_c,        // 0x51 : LD D,C
-    Cpu::op_ld_d_d,        // 0x52 : LD D,D
+    Cpu::op_nop,           // 0x52 : LD D,D
     Cpu::op_ld_d_e,        // 0x53 : LD D,E
     Cpu::op_ld_d_h,        // 0x54 : LD D,H
     Cpu::op_ld_d_l,        // 0x55 : LD D,L
@@ -93,7 +93,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_e_b,        // 0x58 : LD E,B
     Cpu::op_ld_e_c,        // 0x59 : LD E,C
     Cpu::op_ld_e_d,        // 0x5A : LD E,D
-    Cpu::op_ld_e_e,        // 0x5B : LD E,E
+    Cpu::op_nop,           // 0x5B : LD E,E
     Cpu::op_ld_e_h,        // 0x5C : LD E,H
     Cpu::op_ld_e_l,        // 0x5D : LD E,L
     Cpu::op_load_e_hl,     // 0x5E : LD E,(HL)
@@ -102,7 +102,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_h_c,        // 0x61 : LD H,C
     Cpu::op_ld_h_d,        // 0x62 : LD H,D
     Cpu::op_ld_h_e,        // 0x63 : LD H,E
-    Cpu::op_ld_h_h,        // 0x64 : LD H,H
+    Cpu::op_nop,           // 0x64 : LD H,H
     Cpu::op_ld_h_l,        // 0x65 : LD H,L
     Cpu::op_load_h_hl,     // 0x66 : LD H,(HL)
     Cpu::op_ld_h_a,        // 0x67 : LD H,A
@@ -111,7 +111,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_l_d,        // 0x6A : LD L,D
     Cpu::op_ld_l_e,        // 0x6B : LD L,E
     Cpu::op_ld_l_h,        // 0x6C : LD L,H
-    Cpu::op_ld_l_l,        // 0x6D : LD L,L
+    Cpu::op_nop,           // 0x6D : LD L,L
     Cpu::op_load_l_hl,     // 0x6E : LD L,(HL)
     Cpu::op_ld_l_a,        // 0x6F : LD L,A
     Cpu::op_load_hl_b,     // 0x70 : LD (HL),B
@@ -129,7 +129,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_a_h,        // 0x7C : LD A,H
     Cpu::op_ld_a_l,        // 0x7D : LD A,L
     Cpu::op_load_a_hl,     // 0x7E : LD A,(HL)
-    Cpu::op_ld_a_a,        // 0x7F : LD A,A
+    Cpu::op_nop,           // 0x7F : LD A,A
     Cpu::op_add_a_b,       // 0x80 : ADD A,B
     Cpu::op_add_a_c,       // 0x81 : ADD A,C
     Cpu::op_add_a_d,       // 0x82 : ADD A,D
@@ -436,10 +436,6 @@ impl Cpu {
 }
 
 impl Cpu {
-    fn op_ld_a_a(&mut self) {
-        self.registers.register_a = self.registers.register_a;
-    }
-
     fn op_ld_a_b(&mut self) {
         self.registers.register_a = self.registers.register_b;
     }
@@ -466,10 +462,6 @@ impl Cpu {
 
     fn op_ld_b_a(&mut self) {
         self.registers.register_b = self.registers.register_a;
-    }
-
-    fn op_ld_b_b(&mut self) {
-        self.registers.register_b = self.registers.register_b;
     }
 
     fn op_ld_b_c(&mut self) {
@@ -500,10 +492,6 @@ impl Cpu {
         self.registers.register_c = self.registers.register_b;
     }
 
-    fn op_ld_c_c(&mut self) {
-        self.registers.register_c = self.registers.register_c;
-    }
-
     fn op_ld_c_d(&mut self) {
         self.registers.register_c = self.registers.register_d;
     }
@@ -530,10 +518,6 @@ impl Cpu {
 
     fn op_ld_d_c(&mut self) {
         self.registers.register_d = self.registers.register_c;
-    }
-
-    fn op_ld_d_d(&mut self) {
-        self.registers.register_d = self.registers.register_d;
     }
 
     fn op_ld_d_e(&mut self) {
@@ -564,10 +548,6 @@ impl Cpu {
         self.registers.register_e = self.registers.register_d;
     }
 
-    fn op_ld_e_e(&mut self) {
-        self.registers.register_e = self.registers.register_e;
-    }
-
     fn op_ld_e_h(&mut self) {
         self.registers.register_e = self.registers.register_h;
     }
@@ -596,10 +576,6 @@ impl Cpu {
         self.registers.register_h = self.registers.register_e;
     }
 
-    fn op_ld_h_h(&mut self) {
-        self.registers.register_h = self.registers.register_h;
-    }
-
     fn op_ld_h_l(&mut self) {
         self.registers.register_h = self.registers.register_l;
     }
@@ -626,10 +602,6 @@ impl Cpu {
 
     fn op_ld_l_h(&mut self) {
         self.registers.register_l = self.registers.register_h;
-    }
-
-    fn op_ld_l_l(&mut self) {
-        self.registers.register_l = self.registers.register_l;
     }
 }
 
