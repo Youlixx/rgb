@@ -146,14 +146,14 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_adc_a_l,       // 0x8D : ADC A,L
     Cpu::op_adc_a_hl,      // 0x8E : ADC A,(HL)
     Cpu::op_adc_a_a,       // 0x8F : ADC A,A
-    Cpu::op_placeholder,   // 0x90 : SUB B
-    Cpu::op_placeholder,   // 0x91 : SUB C
-    Cpu::op_placeholder,   // 0x92 : SUB D
-    Cpu::op_placeholder,   // 0x93 : SUB E
-    Cpu::op_placeholder,   // 0x94 : SUB H
-    Cpu::op_placeholder,   // 0x95 : SUB L
-    Cpu::op_placeholder,   // 0x96 : SUB (HL)
-    Cpu::op_placeholder,   // 0x97 : SUB A
+    Cpu::op_sub_a_b,       // 0x90 : SUB B
+    Cpu::op_sub_a_c,       // 0x91 : SUB C
+    Cpu::op_sub_a_d,       // 0x92 : SUB D
+    Cpu::op_sub_a_e,       // 0x93 : SUB E
+    Cpu::op_sub_a_h,       // 0x94 : SUB H
+    Cpu::op_sub_a_l,       // 0x95 : SUB L
+    Cpu::op_sub_a_hl,      // 0x96 : SUB (HL)
+    Cpu::op_sub_a_a,       // 0x97 : SUB A
     Cpu::op_placeholder,   // 0x98 : SBC A,B
     Cpu::op_placeholder,   // 0x99 : SBC A,C
     Cpu::op_placeholder,   // 0x9A : SBC A,D
@@ -642,5 +642,58 @@ impl Cpu {
 
         self.status_flags &= !STATUS_FLAG_N;
         self.registers.register_a = (result & 0xFF) as u8;
+    }
+}
+
+macro_rules! op_sub_a_r {
+    ($x:tt) => {
+        paste! {
+            fn [< op_sub_a_ $x >] (&mut self) {
+                self.status_flags = STATUS_FLAG_N;
+
+                if self.registers.register_a == self.registers.[< register_ $x >] {
+                    self.status_flags |= STATUS_FLAG_Z;
+                }
+
+                if (self.registers.register_a & 0xF) < (self.registers.[< register_ $x >] & 0xF) {
+                    self.status_flags |= STATUS_FLAG_H;
+                }
+
+                if self.registers.register_a < self.registers.[< register_ $x >] {
+                    self.status_flags |= STATUS_FLAG_C;
+                }
+
+                self.registers.register_a = self.registers.register_a.wrapping_sub(self.registers.[< register_ $x >]);
+            }
+        }
+    };
+}
+
+impl Cpu {
+    op_sub_a_r!(b);
+    op_sub_a_r!(c);
+    op_sub_a_r!(d);
+    op_sub_a_r!(e);
+    op_sub_a_r!(h);
+    op_sub_a_r!(l);
+    op_sub_a_r!(a);
+
+    fn op_sub_a_hl(&mut self) {
+        let operand = self.memory.read(self.registers.hl());
+        self.status_flags = STATUS_FLAG_N;
+
+        if self.registers.register_a == operand {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        if (self.registers.register_a & 0xF) < (operand & 0xF) {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        if self.registers.register_a < operand {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        self.registers.register_a = self.registers.register_a.wrapping_sub(operand);
     }
 }
