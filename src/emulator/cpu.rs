@@ -609,14 +609,14 @@ impl Cpu {
 
     /// Opcode 0x04: [INC B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
     ///
-    /// Increments data in the 8-bit register B (1 machine cycles).
+    /// Increments data in the 8-bit register B (1 machine cycle).
     fn op_inc_b(&mut self) {
         self.registers.register_b = self.run_inc_u8_and_update_flags(self.registers.register_b);
     }
 
     /// Opcode 0x05: [DEC B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
     ///
-    /// Decrements data in the 8-bit register B (1 machine cycles).
+    /// Decrements data in the 8-bit register B (1 machine cycle).
     fn op_dec_b(&mut self) {
         self.registers.register_b = self.run_dec_u8_and_update_flags(self.registers.register_b);
     }
@@ -668,14 +668,14 @@ impl Cpu {
 
     /// Opcode 0x0C: [INC C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
     ///
-    /// Increments data in the 8-bit register C (1 machine cycles).
+    /// Increments data in the 8-bit register C (1 machine cycle).
     fn op_inc_c(&mut self) {
         self.registers.register_c = self.run_inc_u8_and_update_flags(self.registers.register_c);
     }
 
     /// Opcode 0x0D: [DEC C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
     ///
-    /// Decrements data in the 8-bit register C (1 machine cycles).
+    /// Decrements data in the 8-bit register C (1 machine cycle).
     fn op_dec_c(&mut self) {
         self.registers.register_c = self.run_dec_u8_and_update_flags(self.registers.register_c);
     }
@@ -716,14 +716,14 @@ impl Cpu {
 
     /// Opcode 0x14: [INC D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
     ///
-    /// Increments data in the 8-bit register D (1 machine cycles).
+    /// Increments data in the 8-bit register D (1 machine cycle).
     fn op_inc_d(&mut self) {
         self.registers.register_d = self.run_inc_u8_and_update_flags(self.registers.register_d);
     }
 
     /// Opcode 0x15: [DEC D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
     ///
-    /// Decrements data in the 8-bit register D (1 machine cycles).
+    /// Decrements data in the 8-bit register D (1 machine cycle).
     fn op_dec_d(&mut self) {
         self.registers.register_d = self.run_dec_u8_and_update_flags(self.registers.register_d);
     }
@@ -762,14 +762,14 @@ impl Cpu {
 
     /// Opcode 0x1C: [INC E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
     ///
-    /// Increments data in the 8-bit register E (1 machine cycles).
+    /// Increments data in the 8-bit register E (1 machine cycle).
     fn op_inc_e(&mut self) {
         self.registers.register_e = self.run_inc_u8_and_update_flags(self.registers.register_e);
     }
 
     /// Opcode 0x1D: [DEC E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
     ///
-    /// Decrements data in the 8-bit register E (1 machine cycles).
+    /// Decrements data in the 8-bit register E (1 machine cycle).
     fn op_dec_e(&mut self) {
         self.registers.register_e = self.run_dec_u8_and_update_flags(self.registers.register_e);
     }
@@ -812,14 +812,14 @@ impl Cpu {
 
     /// Opcode 0x24: [INC H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
     ///
-    /// Increments data in the 8-bit register H (1 machine cycles).
+    /// Increments data in the 8-bit register H (1 machine cycle).
     fn op_inc_h(&mut self) {
         self.registers.register_h = self.run_inc_u8_and_update_flags(self.registers.register_h);
     }
 
     /// Opcode 0x25: [DEC H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
     ///
-    /// Decrements data in the 8-bit register H (1 machine cycles).
+    /// Decrements data in the 8-bit register H (1 machine cycle).
     fn op_dec_h(&mut self) {
         self.registers.register_h = self.run_dec_u8_and_update_flags(self.registers.register_h);
     }
@@ -830,6 +830,45 @@ impl Cpu {
     /// machine cycles).
     fn op_ld_h_d8(&mut self) {
         self.registers.register_h = self.fetch_u8();
+    }
+
+    /// Opcode 0x27: [DAA](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=70)
+    ///
+    /// Adjusts the contents of the accumulator (A register) to hold the correct packed
+    /// BCD result after an arithmetic operation on packed BCD numbers (1 machine
+    /// cycle).
+    fn op_daa(&mut self) {
+        let mut current_value = self.registers.register_a as i16;
+
+        self.status_flags &= !(STATUS_FLAG_Z | STATUS_FLAG_H);
+
+        if (self.status_flags & STATUS_FLAG_N) != 0 {
+            if (self.status_flags & STATUS_FLAG_H) != 0 {
+                current_value = current_value.wrapping_sub(0x06) & 0xFF;
+            }
+
+            if (self.status_flags & STATUS_FLAG_C) != 0 {
+                current_value = current_value.wrapping_sub(0x60);
+            }
+        } else {
+            if (self.status_flags & STATUS_FLAG_H) != 0 || (current_value & 0x0F) > 0x09 {
+                current_value = current_value.wrapping_add(0x06);
+            }
+
+            if (self.status_flags & STATUS_FLAG_C) != 0 || current_value > 0x9F {
+                current_value = current_value.wrapping_add(0x60);
+            }
+        }
+
+        if (current_value & 0xFF) == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        if (current_value & 0x0100) == 0x100 {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        self.registers.register_a = (current_value & 0xFF) as u8;
     }
 
     /// Opcode 0x29: [ADD HL,HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
@@ -861,14 +900,14 @@ impl Cpu {
 
     /// Opcode 0x2C: [INC L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
     ///
-    /// Increments data in the 8-bit register L (1 machine cycles).
+    /// Increments data in the 8-bit register L (1 machine cycle).
     fn op_inc_l(&mut self) {
         self.registers.register_l = self.run_inc_u8_and_update_flags(self.registers.register_l);
     }
 
     /// Opcode 0x2D: [DEC L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
     ///
-    /// Decrements data in the 8-bit register L (1 machine cycles).
+    /// Decrements data in the 8-bit register L (1 machine cycle).
     fn op_dec_l(&mut self) {
         self.registers.register_l = self.run_dec_u8_and_update_flags(self.registers.register_l);
     }
@@ -879,6 +918,15 @@ impl Cpu {
     /// machine cycles).
     fn op_ld_l_d8(&mut self) {
         self.registers.register_l = self.fetch_u8();
+    }
+
+    /// Opcode 0x2F: [CPL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=71)
+    ///
+    /// Flips all the bits in the 8-bit A register, and sets the N and H flags (1
+    /// machine cycle).
+    fn op_cpl(&mut self) {
+        self.registers.register_a = !self.registers.register_a;
+        self.status_flags |= STATUS_FLAG_H | STATUS_FLAG_N;
     }
 
     /// Opcode 0x31: [LD SP,d16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=34)
@@ -937,6 +985,14 @@ impl Cpu {
         self.memory.write(self.registers.hl(), value);
     }
 
+    /// Opcode 0x37: [SCF](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=69)
+    ///
+    /// Sets the carry flag, and clears the N and H flags (1 machine cycle).
+    fn op_scf(&mut self) {
+        self.status_flags |= STATUS_FLAG_C;
+        self.status_flags &= !(STATUS_FLAG_H | STATUS_FLAG_N);
+    }
+
     /// Opcode 0x39: [ADD HL,SP](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
     ///
     /// Adds to the 16-bit HL register pair, the 16-bit register SP, and stores the
@@ -966,14 +1022,14 @@ impl Cpu {
 
     /// Opcode 0x3C: [INC A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
     ///
-    /// Increments data in the 8-bit register A (1 machine cycles).
+    /// Increments data in the 8-bit register A (1 machine cycle).
     fn op_inc_a(&mut self) {
         self.registers.register_a = self.run_inc_u8_and_update_flags(self.registers.register_a);
     }
 
     /// Opcode 0x3D: [DEC A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
     ///
-    /// Decrements data in the 8-bit register A (1 machine cycles).
+    /// Decrements data in the 8-bit register A (1 machine cycle).
     fn op_dec_a(&mut self) {
         self.registers.register_a = self.run_dec_u8_and_update_flags(self.registers.register_a);
     }
@@ -984,6 +1040,14 @@ impl Cpu {
     /// machine cycles).
     fn op_ld_a_d8(&mut self) {
         self.registers.register_a = self.fetch_u8();
+    }
+
+    /// Opcode 0x3F: [CCF](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=68)
+    ///
+    /// Flips the carry flag, and clears the N and H flags (1 machine cycle).
+    fn op_ccf(&mut self) {
+        self.status_flags ^= STATUS_FLAG_C;
+        self.status_flags &= !(STATUS_FLAG_H | STATUS_FLAG_N);
     }
 
     /// Opcode 0x40: [LD B,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
@@ -2202,56 +2266,5 @@ impl Cpu {
     fn op_cp_a_u8(&mut self) {
         let operand = self.fetch_u8();
         self.run_cp_and_update_flags(operand);
-    }
-}
-
-impl Cpu {
-    fn op_daa(&mut self) {
-        let mut current_value = self.registers.register_a as i16;
-
-        self.status_flags &= !(STATUS_FLAG_Z | STATUS_FLAG_H);
-
-        if (self.status_flags & STATUS_FLAG_N) != 0 {
-            if (self.status_flags & STATUS_FLAG_H) != 0 {
-                current_value = current_value.wrapping_sub(0x06) & 0xFF;
-            }
-
-            if (self.status_flags & STATUS_FLAG_C) != 0 {
-                current_value = current_value.wrapping_sub(0x60);
-            }
-        } else {
-            if (self.status_flags & STATUS_FLAG_H) != 0 || (current_value & 0x0F) > 0x09 {
-                current_value = current_value.wrapping_add(0x06);
-            }
-
-            if (self.status_flags & STATUS_FLAG_C) != 0 || current_value > 0x9F {
-                current_value = current_value.wrapping_add(0x60);
-            }
-        }
-
-        if (current_value & 0xFF) == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
-        }
-
-        if (current_value & 0x0100) == 0x100 {
-            self.status_flags |= STATUS_FLAG_C;
-        }
-
-        self.registers.register_a = (current_value & 0xFF) as u8;
-    }
-
-    fn op_cpl(&mut self) {
-        self.registers.register_a = !self.registers.register_a;
-        self.status_flags |= STATUS_FLAG_H | STATUS_FLAG_N;
-    }
-
-    fn op_scf(&mut self) {
-        self.status_flags |= STATUS_FLAG_C;
-        self.status_flags &= !(STATUS_FLAG_H | STATUS_FLAG_N);
-    }
-
-    fn op_ccf(&mut self) {
-        self.status_flags ^= STATUS_FLAG_C;
-        self.status_flags &= !(STATUS_FLAG_H | STATUS_FLAG_N);
     }
 }
