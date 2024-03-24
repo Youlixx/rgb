@@ -528,6 +528,7 @@ macro_rules! op_add_a_r {
         paste! {
             fn [< op_add_a_ $x >] (&mut self) {
                 let result: u16 = (self.registers.register_a as u16) + (self.registers.[< register_ $x >] as u16);
+                self.status_flags = 0;
 
                 if (result & 0xFF) == 0 {
                     self.status_flags |= STATUS_FLAG_Z;
@@ -541,7 +542,6 @@ macro_rules! op_add_a_r {
                     self.status_flags |= STATUS_FLAG_C;
                 }
 
-                self.status_flags &= !STATUS_FLAG_N;
                 self.registers.register_a = (result & 0xFF) as u8;
             }
         }
@@ -560,6 +560,7 @@ impl Cpu {
     fn op_add_a_hl(&mut self) {
         let operand = self.memory.read(self.registers.hl());
         let result: u16 = (self.registers.register_a as u16) + (operand as u16);
+        self.status_flags = 0;
 
         if (result & 0xFF) == 0 {
             self.status_flags |= STATUS_FLAG_Z;
@@ -573,7 +574,6 @@ impl Cpu {
             self.status_flags |= STATUS_FLAG_C;
         }
 
-        self.status_flags &= !STATUS_FLAG_N;
         self.registers.register_a = (result & 0xFF) as u8;
     }
 }
@@ -589,6 +589,7 @@ macro_rules! op_adc_a_r {
                 };
 
                 let result: u16 = (self.registers.register_a as u16) + (self.registers.[< register_ $x >] as u16) + carry;
+                self.status_flags = 0;
 
                 if (result & 0xFF) == 0 {
                     self.status_flags |= STATUS_FLAG_Z;
@@ -602,7 +603,6 @@ macro_rules! op_adc_a_r {
                     self.status_flags |= STATUS_FLAG_C;
                 }
 
-                self.status_flags &= !STATUS_FLAG_N;
                 self.registers.register_a = (result & 0xFF) as u8;
             }
         }
@@ -627,6 +627,7 @@ impl Cpu {
 
         let operand = self.memory.read(self.registers.hl());
         let result: u16 = (self.registers.register_a as u16) + (operand as u16) + carry;
+        self.status_flags = 0;
 
         if (result & 0xFF) == 0 {
             self.status_flags |= STATUS_FLAG_Z;
@@ -640,7 +641,6 @@ impl Cpu {
             self.status_flags |= STATUS_FLAG_C;
         }
 
-        self.status_flags &= !STATUS_FLAG_N;
         self.registers.register_a = (result & 0xFF) as u8;
     }
 }
