@@ -340,6 +340,10 @@ impl Cpu {
         OP_CODE_FUNCTION_TABLE[self.fetch_next_byte() as usize](self);
     }
 
+    fn read_hl(&mut self) -> u8 {
+        self.memory.read(self.registers.hl())
+    }
+
     fn op_nop(&mut self) {}
 
     fn op_load_bc_a(&mut self) {
@@ -641,31 +645,31 @@ impl Cpu {
 
 impl Cpu {
     fn op_ld_a_hl(&mut self) {
-        self.registers.register_a = self.memory.read(self.registers.hl());
+        self.registers.register_a = self.read_hl();
     }
 
     fn op_ld_b_hl(&mut self) {
-        self.registers.register_b = self.memory.read(self.registers.hl());
+        self.registers.register_b = self.read_hl();
     }
 
     fn op_ld_c_hl(&mut self) {
-        self.registers.register_c = self.memory.read(self.registers.hl());
+        self.registers.register_c = self.read_hl();
     }
 
     fn op_ld_d_hl(&mut self) {
-        self.registers.register_d = self.memory.read(self.registers.hl());
+        self.registers.register_d = self.read_hl();
     }
 
     fn op_ld_e_hl(&mut self) {
-        self.registers.register_e = self.memory.read(self.registers.hl());
+        self.registers.register_e = self.read_hl();
     }
 
     fn op_ld_h_hl(&mut self) {
-        self.registers.register_h = self.memory.read(self.registers.hl());
+        self.registers.register_h = self.read_hl();
     }
 
     fn op_ld_l_hl(&mut self) {
-        self.registers.register_l = self.memory.read(self.registers.hl());
+        self.registers.register_l = self.read_hl();
     }
 }
 
@@ -718,7 +722,8 @@ impl Cpu {
     }
 
     fn op_add_a_hl(&mut self) {
-        self.op_add_a(self.memory.read(self.registers.hl()));
+        let operand = self.read_hl();
+        self.op_add_a(operand);
     }
 
     fn op_add_a_u8(&mut self) {
@@ -836,7 +841,8 @@ impl Cpu {
     }
 
     fn op_adc_a_hl(&mut self) {
-        self.op_adc_a(self.memory.read(self.registers.hl()));
+        let operand = self.read_hl();
+        self.op_adc_a(operand);
     }
 
     fn op_adc_a_u8(&mut self) {
@@ -893,7 +899,8 @@ impl Cpu {
     }
 
     fn op_sub_a_hl(&mut self) {
-        self.op_sub_a(self.memory.read(self.registers.hl()));
+        let operand = self.read_hl();
+        self.op_sub_a(operand);
     }
 
     fn op_sub_a_u8(&mut self) {
@@ -966,7 +973,8 @@ impl Cpu {
     }
 
     fn op_sbc_a_hl(&mut self) {
-        self.op_sbc_a(self.memory.read(self.registers.hl()));
+        let operand = self.read_hl();
+        self.op_sbc_a(operand);
     }
 
     fn op_sbc_a_u8(&mut self) {
@@ -1014,7 +1022,8 @@ impl Cpu {
     }
 
     fn op_and_a_hl(&mut self) {
-        self.op_and_a(self.memory.read(self.registers.hl()));
+        let operand = self.read_hl();
+        self.op_and_a(operand);
     }
 
     fn op_and_a_u8(&mut self) {
@@ -1062,7 +1071,8 @@ impl Cpu {
     }
 
     fn op_xor_a_hl(&mut self) {
-        self.op_xor_a(self.memory.read(self.registers.hl()));
+        let operand = self.read_hl();
+        self.op_xor_a(operand);
     }
 
     fn op_xor_a_u8(&mut self) {
@@ -1110,7 +1120,8 @@ impl Cpu {
     }
 
     fn op_or_a_hl(&mut self) {
-        self.op_or_a(self.memory.read(self.registers.hl()));
+        let operand = self.read_hl();
+        self.op_or_a(operand);
     }
 
     fn op_or_a_u8(&mut self) {
@@ -1165,7 +1176,8 @@ impl Cpu {
     }
 
     fn op_cp_a_hl(&mut self) {
-        self.op_cp_a(self.memory.read(self.registers.hl()));
+        let operand: u8 = self.read_hl();
+        self.op_cp_a(operand);
     }
 
     fn op_cp_a_u8(&mut self) {
