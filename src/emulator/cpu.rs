@@ -581,6 +581,14 @@ impl Cpu {
             .write(self.registers.bc(), self.registers.register_a);
     }
 
+    /// Opcode 0x03: [INC BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=72)
+    ///
+    /// Increments data in the 16-bit register BC (2 machine cycles).
+    fn op_inc_bc(&mut self) {
+        // TODO: add extra dummy cycle?
+        self.registers.set_bc(self.registers.bc().wrapping_add(1));
+    }
+
     /// Opcode 0x04: [INC B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
     ///
     /// Increments data in the 8-bit register B (1 machine cycles).
@@ -664,6 +672,14 @@ impl Cpu {
             .write(self.registers.de(), self.registers.register_a);
     }
 
+    /// Opcode 0x33: [INC DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=72)
+    ///
+    /// Increments data in the 16-bit register DE (2 machine cycles).
+    fn op_inc_de(&mut self) {
+        // TODO: add extra dummy cycle?
+        self.registers.set_de(self.registers.de().wrapping_add(1));
+    }
+
     /// Opcode 0x14: [INC D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
     ///
     /// Increments data in the 8-bit register D (1 machine cycles).
@@ -734,6 +750,14 @@ impl Cpu {
         let address = self.registers.hl();
         self.memory.write(address, self.registers.register_a);
         self.registers.set_hl(address + 1);
+    }
+
+    /// Opcode 0x23: [INC HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=72)
+    ///
+    /// Increments data in the 16-bit register HL (2 machine cycles).
+    fn op_inc_hl(&mut self) {
+        // TODO: add extra dummy cycle?
+        self.registers.set_hl(self.registers.hl().wrapping_add(1));
     }
 
     /// Opcode 0x24: [INC H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
@@ -808,6 +832,14 @@ impl Cpu {
         let address = self.registers.hl();
         self.memory.write(address, self.registers.register_a);
         self.registers.set_hl(address - 1);
+    }
+
+    /// Opcode 0x33: [INC SP](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=72)
+    ///
+    /// Increments data in the 16-bit register SP (2 machine cycles).
+    fn op_inc_sp(&mut self) {
+        // TODO: add extra dummy cycle?
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
     }
 
     /// Opcode 0x34: [INC (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=56)
@@ -2119,24 +2151,6 @@ impl Cpu {
         if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
             self.status_flags |= STATUS_FLAG_C;
         }
-    }
-}
-
-impl Cpu {
-    fn op_inc_bc(&mut self) {
-        self.registers.set_bc(self.registers.bc().wrapping_add(1));
-    }
-
-    fn op_inc_de(&mut self) {
-        self.registers.set_de(self.registers.de().wrapping_add(1));
-    }
-
-    fn op_inc_hl(&mut self) {
-        self.registers.set_hl(self.registers.hl().wrapping_add(1));
-    }
-
-    fn op_inc_sp(&mut self) {
-        self.stack_pointer = self.stack_pointer.wrapping_add(1);
     }
 }
 
