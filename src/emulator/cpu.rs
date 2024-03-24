@@ -216,7 +216,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0xD3 : undefined
     Cpu::op_placeholder,   // 0xD4 : CALL NC,a16
     Cpu::op_placeholder,   // 0xD5 : PUSH DE
-    Cpu::op_placeholder,   // 0xD6 : SUB d8
+    Cpu::op_sub_a_u8,      // 0xD6 : SUB d8
     Cpu::op_placeholder,   // 0xD7 : RST 10H
     Cpu::op_placeholder,   // 0xD8 : RET C
     Cpu::op_placeholder,   // 0xD9 : RETI
@@ -646,41 +646,8 @@ impl Cpu {
     }
 }
 
-macro_rules! op_sub_a_r {
-    ($x:tt) => {
-        paste! {
-            fn [< op_sub_a_ $x >] (&mut self) {
-                self.status_flags = STATUS_FLAG_N;
-
-                if self.registers.register_a == self.registers.[< register_ $x >] {
-                    self.status_flags |= STATUS_FLAG_Z;
-                }
-
-                if (self.registers.register_a & 0xF) < (self.registers.[< register_ $x >] & 0xF) {
-                    self.status_flags |= STATUS_FLAG_H;
-                }
-
-                if self.registers.register_a < self.registers.[< register_ $x >] {
-                    self.status_flags |= STATUS_FLAG_C;
-                }
-
-                self.registers.register_a = self.registers.register_a.wrapping_sub(self.registers.[< register_ $x >]);
-            }
-        }
-    };
-}
-
 impl Cpu {
-    op_sub_a_r!(b);
-    op_sub_a_r!(c);
-    op_sub_a_r!(d);
-    op_sub_a_r!(e);
-    op_sub_a_r!(h);
-    op_sub_a_r!(l);
-    op_sub_a_r!(a);
-
-    fn op_sub_a_hl(&mut self) {
-        let operand = self.memory.read(self.registers.hl());
+    fn op_sub_a(&mut self, operand: u8) {
         self.status_flags = STATUS_FLAG_N;
 
         if self.registers.register_a == operand {
@@ -696,6 +663,43 @@ impl Cpu {
         }
 
         self.registers.register_a = self.registers.register_a.wrapping_sub(operand);
+    }
+
+    fn op_sub_a_a(&mut self) {
+        self.op_sub_a(self.registers.register_a);
+    }
+
+    fn op_sub_a_b(&mut self) {
+        self.op_sub_a(self.registers.register_b);
+    }
+
+    fn op_sub_a_c(&mut self) {
+        self.op_sub_a(self.registers.register_c);
+    }
+
+    fn op_sub_a_d(&mut self) {
+        self.op_sub_a(self.registers.register_d);
+    }
+
+    fn op_sub_a_e(&mut self) {
+        self.op_sub_a(self.registers.register_e);
+    }
+
+    fn op_sub_a_h(&mut self) {
+        self.op_sub_a(self.registers.register_h);
+    }
+
+    fn op_sub_a_l(&mut self) {
+        self.op_sub_a(self.registers.register_l);
+    }
+
+    fn op_sub_a_hl(&mut self) {
+        self.op_sub_a(self.memory.read(self.registers.hl()));
+    }
+
+    fn op_sub_a_u8(&mut self) {
+        let operand = self.fetch_next_byte();
+        self.op_sub_a(operand);
     }
 }
 
