@@ -224,7 +224,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0xDB : undefined
     Cpu::op_placeholder,   // 0xDC : CALL C,a16
     Cpu::op_placeholder,   // 0xDD : undefined
-    Cpu::op_placeholder,   // 0xDE : SBC A,d8
+    Cpu::op_sbc_a_u8,      // 0xDE : SBC A,d8
     Cpu::op_placeholder,   // 0xDF : RST 18H
     Cpu::op_placeholder,   // 0xE0 : LDH (a8),A
     Cpu::op_placeholder,   // 0xE1 : POP HL
@@ -703,63 +703,20 @@ impl Cpu {
     }
 }
 
-macro_rules! op_sbc_a_r {
-    ($x:tt) => {
-        paste! {
-            fn [< op_sbc_a_ $x >] (&mut self) {
-                let carry: u8 = if (self.status_flags & STATUS_FLAG_C) != 0 {
-                    1
-                } else {
-                    0
-                };
-
-                let result = self.registers.register_a.wrapping_sub(self.registers.[< register_ $x >]).wrapping_sub(carry);
-                self.status_flags = STATUS_FLAG_N;
-
-                if result == 0 {
-                    self.status_flags |= STATUS_FLAG_Z;
-                }
-
-                if (self.registers.register_a & 0xF) < ((self.registers.[< register_ $x >] & 0xF) + carry) {
-                    self.status_flags |= STATUS_FLAG_H;
-                }
-
-                if (self.registers.register_a as u16)
-                    .wrapping_sub(self.registers.[< register_ $x >] as u16)
-                    .wrapping_sub(carry as u16)
-                    > 0xFF
-                {
-                    self.status_flags |= STATUS_FLAG_C;
-                }
-
-                self.registers.register_a = result;
-            }
-        }
-    };
-}
-
 impl Cpu {
-    op_sbc_a_r!(b);
-    op_sbc_a_r!(c);
-    op_sbc_a_r!(d);
-    op_sbc_a_r!(e);
-    op_sbc_a_r!(h);
-    op_sbc_a_r!(l);
-    op_sbc_a_r!(a);
-
-    fn op_sbc_a_hl(&mut self) {
+    fn op_sbc_a(&mut self, operand: u8) {
         let carry: u8 = if (self.status_flags & STATUS_FLAG_C) != 0 {
             1
         } else {
             0
         };
 
-        let operand = self.memory.read(self.registers.hl());
         let result = self
             .registers
             .register_a
             .wrapping_sub(operand)
             .wrapping_sub(carry);
+
         self.status_flags = STATUS_FLAG_N;
 
         if result == 0 {
@@ -779,6 +736,43 @@ impl Cpu {
         }
 
         self.registers.register_a = result;
+    }
+
+    fn op_sbc_a_a(&mut self) {
+        self.op_sbc_a(self.registers.register_a);
+    }
+
+    fn op_sbc_a_b(&mut self) {
+        self.op_sbc_a(self.registers.register_b);
+    }
+
+    fn op_sbc_a_c(&mut self) {
+        self.op_sbc_a(self.registers.register_c);
+    }
+
+    fn op_sbc_a_d(&mut self) {
+        self.op_sbc_a(self.registers.register_d);
+    }
+
+    fn op_sbc_a_e(&mut self) {
+        self.op_sbc_a(self.registers.register_e);
+    }
+
+    fn op_sbc_a_h(&mut self) {
+        self.op_sbc_a(self.registers.register_h);
+    }
+
+    fn op_sbc_a_l(&mut self) {
+        self.op_sbc_a(self.registers.register_l);
+    }
+
+    fn op_sbc_a_hl(&mut self) {
+        self.op_sbc_a(self.memory.read(self.registers.hl()));
+    }
+
+    fn op_sbc_a_u8(&mut self) {
+        let operand = self.fetch_next_byte();
+        self.op_sbc_a(operand);
     }
 }
 
