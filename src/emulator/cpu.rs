@@ -234,7 +234,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0xE5 : PUSH HL
     Cpu::op_and_a_u8,      // 0xE6 : AND d8
     Cpu::op_placeholder,   // 0xE7 : RST 20H
-    Cpu::op_placeholder,   // 0xE8 : ADD SP,r8
+    Cpu::op_add_sp_i8,     // 0xE8 : ADD SP,r8
     Cpu::op_placeholder,   // 0xE9 : JP (HL)
     Cpu::op_placeholder,   // 0xEA : LD (a16),A
     Cpu::op_placeholder,   // 0xEB : undefined
@@ -626,6 +626,23 @@ impl Cpu {
 
     fn op_add_hl_sp(&mut self) {
         self.op_add_hl(self.stack_pointer);
+    }
+
+    // TODO: This op is supposed to be 4 machine cycles long, needs 2 extra dummy cycles
+    fn op_add_sp_i8(&mut self) {
+        let offset = self.fetch_next_byte() as i8;
+
+        self.stack_pointer = (self.stack_pointer as i32).wrapping_add(offset as i32) as u16;
+        self.status_flags = 0;
+
+        // TODO: check type convertion...
+        if ((self.stack_pointer & 0x0F) + (offset as u16 & 0x0F)) > 0x0F {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
+            self.status_flags |= STATUS_FLAG_C;
+        }
     }
 }
 
