@@ -632,6 +632,14 @@ impl Cpu {
         self.registers.register_a = self.memory.read(self.registers.bc());
     }
 
+    /// Opcode 0x0B: [DEC BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=73)
+    ///
+    /// DEcrements data in the 16-bit register BC (2 machine cycles).
+    fn op_dec_bc(&mut self) {
+        // TODO: add extra dummy cycle?
+        self.registers.set_bc(self.registers.bc().wrapping_sub(1));
+    }
+
     /// Opcode 0x0C: [INC C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
     ///
     /// Increments data in the 8-bit register C (1 machine cycles).
@@ -672,7 +680,7 @@ impl Cpu {
             .write(self.registers.de(), self.registers.register_a);
     }
 
-    /// Opcode 0x33: [INC DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=72)
+    /// Opcode 0x13: [INC DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=72)
     ///
     /// Increments data in the 16-bit register DE (2 machine cycles).
     fn op_inc_de(&mut self) {
@@ -708,6 +716,14 @@ impl Cpu {
     /// 16-bit register DE (2 machine cycles).
     fn op_ld_a_de(&mut self) {
         self.registers.register_a = self.memory.read(self.registers.de());
+    }
+
+    /// Opcode 0x1B: [DEC DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=73)
+    ///
+    /// DEcrements data in the 16-bit register DE (2 machine cycles).
+    fn op_dec_de(&mut self) {
+        // TODO: add extra dummy cycle?
+        self.registers.set_de(self.registers.de().wrapping_sub(1));
     }
 
     /// Opcode 0x1C: [INC E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
@@ -791,6 +807,14 @@ impl Cpu {
         let address = self.registers.hl();
         self.registers.register_a = self.memory.read(address);
         self.registers.set_hl(address + 1);
+    }
+
+    /// Opcode 0x2B: [DEC HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=73)
+    ///
+    /// DEcrements data in the 16-bit register HL (2 machine cycles).
+    fn op_dec_hl(&mut self) {
+        // TODO: add extra dummy cycle?
+        self.registers.set_hl(self.registers.hl().wrapping_sub(1));
     }
 
     /// Opcode 0x2C: [INC L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
@@ -880,6 +904,14 @@ impl Cpu {
         let address = self.registers.hl();
         self.registers.register_a = self.memory.read(address);
         self.registers.set_hl(address - 1);
+    }
+
+    /// Opcode 0x3B: [DEC SP](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=73)
+    ///
+    /// DEcrements data in the 16-bit register SP (2 machine cycles).
+    fn op_dec_sp(&mut self) {
+        // TODO: add extra dummy cycle?
+        self.stack_pointer = self.stack_pointer.wrapping_sub(1);
     }
 
     /// Opcode 0x3C: [INC A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
@@ -2151,24 +2183,6 @@ impl Cpu {
         if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
             self.status_flags |= STATUS_FLAG_C;
         }
-    }
-}
-
-impl Cpu {
-    fn op_dec_bc(&mut self) {
-        self.registers.set_bc(self.registers.bc().wrapping_sub(1));
-    }
-
-    fn op_dec_de(&mut self) {
-        self.registers.set_de(self.registers.de().wrapping_sub(1));
-    }
-
-    fn op_dec_hl(&mut self) {
-        self.registers.set_hl(self.registers.hl().wrapping_sub(1));
-    }
-
-    fn op_dec_sp(&mut self) {
-        self.stack_pointer = self.stack_pointer.wrapping_sub(1);
     }
 }
 
