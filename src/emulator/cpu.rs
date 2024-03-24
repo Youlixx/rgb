@@ -365,37 +365,9 @@ impl Cpu {
         self.registers.set_hl(address + 1);
     }
 
-    fn op_load_b_u8(&mut self) {
-        self.registers.register_b = self.fetch_next_byte();
-    }
-
-    fn op_load_c_u8(&mut self) {
-        self.registers.register_c = self.fetch_next_byte();
-    }
-
-    fn op_load_d_u8(&mut self) {
-        self.registers.register_d = self.fetch_next_byte();
-    }
-
-    fn op_load_e_u8(&mut self) {
-        self.registers.register_e = self.fetch_next_byte();
-    }
-
-    fn op_load_h_u8(&mut self) {
-        self.registers.register_h = self.fetch_next_byte();
-    }
-
-    fn op_load_l_u8(&mut self) {
-        self.registers.register_l = self.fetch_next_byte();
-    }
-
     fn op_load_hl_u8(&mut self) {
         let value = self.fetch_next_byte();
         self.memory.write(self.registers.hl(), value);
-    }
-
-    fn op_load_a_u8(&mut self) {
-        self.registers.register_a = self.fetch_next_byte();
     }
 
     fn op_halt(&mut self) {
@@ -412,6 +384,26 @@ impl Cpu {
 
         value
     }
+}
+
+macro_rules! op_load_r_u8 {
+    ($x:tt) => {
+        paste! {
+            fn [< op_load_ $x _u8 >] (&mut self) {
+                self.registers. [< register_ $x >] = self.fetch_next_byte();
+            }
+        }
+    };
+}
+
+impl Cpu {
+    op_load_r_u8!(b);
+    op_load_r_u8!(c);
+    op_load_r_u8!(d);
+    op_load_r_u8!(e);
+    op_load_r_u8!(h);
+    op_load_r_u8!(l);
+    op_load_r_u8!(a);
 }
 
 macro_rules! op_load_r_r {
