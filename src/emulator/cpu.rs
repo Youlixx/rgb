@@ -398,36 +398,8 @@ impl Cpu {
         self.registers.register_a = self.fetch_next_byte();
     }
 
-    fn op_load_b_hl(&mut self) {
-        self.registers.register_b = self.memory.read(self.registers.hl());
-    }
-
-    fn op_load_c_hl(&mut self) {
-        self.registers.register_c = self.memory.read(self.registers.hl());
-    }
-
-    fn op_load_d_hl(&mut self) {
-        self.registers.register_d = self.memory.read(self.registers.hl());
-    }
-
-    fn op_load_e_hl(&mut self) {
-        self.registers.register_e = self.memory.read(self.registers.hl());
-    }
-
-    fn op_load_h_hl(&mut self) {
-        self.registers.register_h = self.memory.read(self.registers.hl());
-    }
-
-    fn op_load_l_hl(&mut self) {
-        self.registers.register_l = self.memory.read(self.registers.hl());
-    }
-
     fn op_halt(&mut self) {
         self.op_placeholder();
-    }
-
-    fn op_load_a_hl(&mut self) {
-        self.registers.register_a = self.memory.read(self.registers.hl());
     }
 
     fn op_placeholder(&mut self) {
@@ -529,4 +501,25 @@ impl Cpu {
     op_load_hl_r!(h);
     op_load_hl_r!(l);
     op_load_hl_r!(a);
+}
+
+macro_rules! op_load_r_hl {
+    ($x:tt) => {
+        paste! {
+            fn [< op_load_ $x _hl>] (&mut self) {
+                self.registers.[< register_ $x >] = self.memory
+                    .read(self.registers.hl());
+            }
+        }
+    };
+}
+
+impl Cpu {
+    op_load_r_hl!(b);
+    op_load_r_hl!(c);
+    op_load_r_hl!(d);
+    op_load_r_hl!(e);
+    op_load_r_hl!(h);
+    op_load_r_hl!(l);
+    op_load_r_hl!(a);
 }
