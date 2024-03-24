@@ -2,7 +2,7 @@ use super::memory::Memory;
 
 const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_nop,         // 0x00 : NOP
-    Cpu::op_placeholder, // 0x01 : LD BC,d16
+    Cpu::op_ld_bc_u16,   // 0x01 : LD BC,d16
     Cpu::op_ld_bc_a,     // 0x02 : LD (BC),A
     Cpu::op_inc_bc,      // 0x03 : INC BC
     Cpu::op_inc_b,       // 0x04 : INC B
@@ -18,7 +18,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_c_u8,     // 0x0E : LD C,d8
     Cpu::op_placeholder, // 0x0F : RRCA
     Cpu::op_placeholder, // 0x10 : STOP 0
-    Cpu::op_placeholder, // 0x11 : LD DE,d16
+    Cpu::op_ld_de_u16,   // 0x11 : LD DE,d16
     Cpu::op_ld_de_a,     // 0x12 : LD (DE),A
     Cpu::op_inc_de,      // 0x13 : INC DE
     Cpu::op_inc_d,       // 0x14 : INC D
@@ -34,7 +34,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_e_u8,     // 0x1E : LD E,d8
     Cpu::op_placeholder, // 0x1F : RRA
     Cpu::op_placeholder, // 0x20 : JR NZ,r8
-    Cpu::op_placeholder, // 0x21 : LD HL,d16
+    Cpu::op_ld_hl_u16,   // 0x21 : LD HL,d16
     Cpu::op_ld_hl_inc_a, // 0x22 : LD (HL+),A
     Cpu::op_inc_hl,      // 0x23 : INC HL
     Cpu::op_inc_h,       // 0x24 : INC H
@@ -50,7 +50,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_l_u8,     // 0x2E : LD L,d8
     Cpu::op_cpl,         // 0x2F : CPL
     Cpu::op_placeholder, // 0x30 : JR NC,r8
-    Cpu::op_placeholder, // 0x31 : LD SP,d16
+    Cpu::op_ld_sp_u16,   // 0x31 : LD SP,d16
     Cpu::op_ld_hl_dec_a, // 0x32 : LD (HL-),A
     Cpu::op_inc_sp,      // 0x33 : INC SP
     Cpu::op_inc_hl_ind,  // 0x34 : INC (HL)
@@ -336,7 +336,7 @@ impl Cpu {
     }
 
     pub fn tick(&mut self) {
-        OP_CODE_FUNCTION_TABLE[self.fetch_next_byte() as usize](self);
+        OP_CODE_FUNCTION_TABLE[self.fetch_u8() as usize](self);
     }
 
     fn read_hl(&mut self) -> u8 {
@@ -353,41 +353,48 @@ impl Cpu {
         panic!("Opcode not implemented!")
     }
 
-    fn fetch_next_byte(&mut self) -> u8 {
+    fn fetch_u8(&mut self) -> u8 {
         let value = self.memory.read(self.program_counter);
         self.program_counter += 1;
 
         value
     }
+
+    fn fetch_u16(&mut self) -> u16 {
+        let msb = self.fetch_u8();
+        let lsb = self.fetch_u8();
+
+        (lsb as u16) | ((msb as u16) << 8)
+    }
 }
 
 impl Cpu {
     fn op_ld_a_u8(&mut self) {
-        self.registers.register_a = self.fetch_next_byte();
+        self.registers.register_a = self.fetch_u8();
     }
 
     fn op_ld_b_u8(&mut self) {
-        self.registers.register_b = self.fetch_next_byte();
+        self.registers.register_b = self.fetch_u8();
     }
 
     fn op_ld_c_u8(&mut self) {
-        self.registers.register_c = self.fetch_next_byte();
+        self.registers.register_c = self.fetch_u8();
     }
 
     fn op_ld_d_u8(&mut self) {
-        self.registers.register_d = self.fetch_next_byte();
+        self.registers.register_d = self.fetch_u8();
     }
 
     fn op_ld_e_u8(&mut self) {
-        self.registers.register_e = self.fetch_next_byte();
+        self.registers.register_e = self.fetch_u8();
     }
 
     fn op_ld_h_u8(&mut self) {
-        self.registers.register_h = self.fetch_next_byte();
+        self.registers.register_h = self.fetch_u8();
     }
 
     fn op_ld_l_u8(&mut self) {
-        self.registers.register_l = self.fetch_next_byte();
+        self.registers.register_l = self.fetch_u8();
     }
 }
 
@@ -626,6 +633,27 @@ impl Cpu {
 }
 
 impl Cpu {
+    fn op_ld_bc_u16(&mut self) {
+        let value = self.fetch_u16();
+        self.registers.set_bc(value);
+    }
+
+    fn op_ld_de_u16(&mut self) {
+        let value = self.fetch_u16();
+        self.registers.set_de(value);
+    }
+
+    fn op_ld_hl_u16(&mut self) {
+        let value = self.fetch_u16();
+        self.registers.set_hl(value);
+    }
+
+    fn op_ld_sp_u16(&mut self) {
+        self.stack_pointer = self.fetch_u16();
+    }
+}
+
+impl Cpu {
     fn op_ld_bc_a(&mut self) {
         self.memory
             .write(self.registers.bc(), self.registers.register_a);
@@ -669,7 +697,7 @@ impl Cpu {
     }
 
     fn op_ld_hl_u8(&mut self) {
-        let value = self.fetch_next_byte();
+        let value = self.fetch_u8();
         self.memory.write(self.registers.hl(), value);
     }
 }
@@ -728,7 +756,7 @@ impl Cpu {
     }
 
     fn op_add_a_u8(&mut self) {
-        let operand = self.fetch_next_byte();
+        let operand = self.fetch_u8();
         self.op_add_a(operand);
     }
 }
@@ -770,7 +798,7 @@ impl Cpu {
 
     // TODO: This op is supposed to be 4 machine cycles long, needs 2 extra dummy cycles
     fn op_add_sp_i8(&mut self) {
-        let offset = self.fetch_next_byte() as i8;
+        let offset = self.fetch_u8() as i8;
 
         self.stack_pointer = (self.stack_pointer as i32).wrapping_add(offset as i32) as u16;
         self.status_flags = 0;
@@ -847,7 +875,7 @@ impl Cpu {
     }
 
     fn op_adc_a_u8(&mut self) {
-        let operand = self.fetch_next_byte();
+        let operand = self.fetch_u8();
         self.op_adc_a(operand);
     }
 }
@@ -905,7 +933,7 @@ impl Cpu {
     }
 
     fn op_sub_a_u8(&mut self) {
-        let operand = self.fetch_next_byte();
+        let operand = self.fetch_u8();
         self.op_sub_a(operand);
     }
 }
@@ -979,7 +1007,7 @@ impl Cpu {
     }
 
     fn op_sbc_a_u8(&mut self) {
-        let operand = self.fetch_next_byte();
+        let operand = self.fetch_u8();
         self.op_sbc_a(operand);
     }
 }
@@ -1028,7 +1056,7 @@ impl Cpu {
     }
 
     fn op_and_a_u8(&mut self) {
-        let operand = self.fetch_next_byte();
+        let operand = self.fetch_u8();
         self.op_and_a(operand);
     }
 }
@@ -1077,7 +1105,7 @@ impl Cpu {
     }
 
     fn op_xor_a_u8(&mut self) {
-        let operand = self.fetch_next_byte();
+        let operand = self.fetch_u8();
         self.op_xor_a(operand);
     }
 }
@@ -1126,7 +1154,7 @@ impl Cpu {
     }
 
     fn op_or_a_u8(&mut self) {
-        let operand = self.fetch_next_byte();
+        let operand = self.fetch_u8();
         self.op_or_a(operand);
     }
 }
@@ -1182,7 +1210,7 @@ impl Cpu {
     }
 
     fn op_cp_a_u8(&mut self) {
-        let operand = self.fetch_next_byte();
+        let operand = self.fetch_u8();
         self.op_cp_a(operand);
     }
 }
