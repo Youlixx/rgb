@@ -208,7 +208,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0xCB : PREFIX CB
     Cpu::op_placeholder,   // 0xCC : CALL Z,a16
     Cpu::op_placeholder,   // 0xCD : CALL a16
-    Cpu::op_placeholder,   // 0xCE : ADC A,d8
+    Cpu::op_adc_a_u8,      // 0xCE : ADC A,d8
     Cpu::op_placeholder,   // 0xCF : RST 08H
     Cpu::op_placeholder,   // 0xD0 : RET NC
     Cpu::op_placeholder,   // 0xD1 : POP DE
@@ -581,55 +581,16 @@ impl Cpu {
     }
 }
 
-macro_rules! op_adc_a_r {
-    ($x:tt) => {
-        paste! {
-            fn [< op_adc_a_ $x >] (&mut self) {
-                let carry: u16 = if (self.status_flags & STATUS_FLAG_C) != 0 {
-                    1
-                } else {
-                    0
-                };
-
-                let result: u16 = (self.registers.register_a as u16) + (self.registers.[< register_ $x >] as u16) + carry;
-                self.status_flags = 0;
-
-                if (result & 0xFF) == 0 {
-                    self.status_flags |= STATUS_FLAG_Z;
-                }
-
-                if ((self.registers.register_a & 0xF) + (self.registers.[< register_ $x >] & 0xF) + (carry as u8)) > 0xF {
-                    self.status_flags |= STATUS_FLAG_H;
-                }
-
-                if result > 0xFF {
-                    self.status_flags |= STATUS_FLAG_C;
-                }
-
-                self.registers.register_a = (result & 0xFF) as u8;
-            }
-        }
-    };
-}
-
 impl Cpu {
-    op_adc_a_r!(b);
-    op_adc_a_r!(c);
-    op_adc_a_r!(d);
-    op_adc_a_r!(e);
-    op_adc_a_r!(h);
-    op_adc_a_r!(l);
-    op_adc_a_r!(a);
-
-    fn op_adc_a_hl(&mut self) {
+    fn op_adc_a(&mut self, operand: u8) {
         let carry: u16 = if (self.status_flags & STATUS_FLAG_C) != 0 {
             1
         } else {
             0
         };
 
-        let operand = self.memory.read(self.registers.hl());
         let result: u16 = (self.registers.register_a as u16) + (operand as u16) + carry;
+
         self.status_flags = 0;
 
         if (result & 0xFF) == 0 {
@@ -645,6 +606,43 @@ impl Cpu {
         }
 
         self.registers.register_a = (result & 0xFF) as u8;
+    }
+
+    fn op_adc_a_a(&mut self) {
+        self.op_adc_a(self.registers.register_a);
+    }
+
+    fn op_adc_a_b(&mut self) {
+        self.op_adc_a(self.registers.register_b);
+    }
+
+    fn op_adc_a_c(&mut self) {
+        self.op_adc_a(self.registers.register_c);
+    }
+
+    fn op_adc_a_d(&mut self) {
+        self.op_adc_a(self.registers.register_d);
+    }
+
+    fn op_adc_a_e(&mut self) {
+        self.op_adc_a(self.registers.register_e);
+    }
+
+    fn op_adc_a_h(&mut self) {
+        self.op_adc_a(self.registers.register_h);
+    }
+
+    fn op_adc_a_l(&mut self) {
+        self.op_adc_a(self.registers.register_l);
+    }
+
+    fn op_adc_a_hl(&mut self) {
+        self.op_adc_a(self.memory.read(self.registers.hl()));
+    }
+
+    fn op_adc_a_u8(&mut self) {
+        let operand = self.fetch_next_byte();
+        self.op_adc_a(operand);
     }
 }
 
