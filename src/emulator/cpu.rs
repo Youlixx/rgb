@@ -347,8 +347,6 @@ impl Cpu {
         self.memory.write(self.registers.hl(), value);
     }
 
-    fn op_nop(&mut self) {}
-
     fn op_placeholder(&mut self) {
         panic!("Opcode not implemented!")
     }
@@ -387,6 +385,12 @@ impl Cpu {
 
 /// Gameboy SM63 opcode implementations
 impl Cpu {
+    /// Opcode 0x00: [NOP](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=34)
+    ///
+    /// No operation. This instruction doesn’t do anything, but can be used to add a
+    /// delay of one machine cycle and increment PC by one (1 machine cycle).
+    fn op_nop(&mut self) {}
+
     /// Opcode 0x01: [LD BC,d16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=34)
     ///
     /// Load to the 16-bit register BC, the immediate 16-bit data following the opcode
