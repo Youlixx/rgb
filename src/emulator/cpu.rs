@@ -154,14 +154,14 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_sub_a_l,       // 0x95 : SUB L
     Cpu::op_sub_a_hl,      // 0x96 : SUB (HL)
     Cpu::op_sub_a_a,       // 0x97 : SUB A
-    Cpu::op_placeholder,   // 0x98 : SBC A,B
-    Cpu::op_placeholder,   // 0x99 : SBC A,C
-    Cpu::op_placeholder,   // 0x9A : SBC A,D
-    Cpu::op_placeholder,   // 0x9B : SBC A,E
-    Cpu::op_placeholder,   // 0x9C : SBC A,H
-    Cpu::op_placeholder,   // 0x9D : SBC A,L
-    Cpu::op_placeholder,   // 0x9E : SBC A,(HL)
-    Cpu::op_placeholder,   // 0x9F : SBC A,A
+    Cpu::op_sbc_a_b,       // 0x98 : SBC A,B
+    Cpu::op_sbc_a_c,       // 0x99 : SBC A,C
+    Cpu::op_sbc_a_d,       // 0x9A : SBC A,D
+    Cpu::op_sbc_a_e,       // 0x9B : SBC A,E
+    Cpu::op_sbc_a_h,       // 0x9C : SBC A,H
+    Cpu::op_sbc_a_l,       // 0x9D : SBC A,L
+    Cpu::op_sbc_a_hl,      // 0x9E : SBC A,(HL)
+    Cpu::op_sbc_a_a,       // 0x9F : SBC A,A
     Cpu::op_placeholder,   // 0xA0 : AND B
     Cpu::op_placeholder,   // 0xA1 : AND C
     Cpu::op_placeholder,   // 0xA2 : AND D
@@ -695,5 +695,84 @@ impl Cpu {
         }
 
         self.registers.register_a = self.registers.register_a.wrapping_sub(operand);
+    }
+}
+
+macro_rules! op_sbc_a_r {
+    ($x:tt) => {
+        paste! {
+            fn [< op_sbc_a_ $x >] (&mut self) {
+                let carry: u8 = if (self.status_flags & STATUS_FLAG_C) != 0 {
+                    1
+                } else {
+                    0
+                };
+
+                let result = self.registers.register_a.wrapping_sub(self.registers.[< register_ $x >]).wrapping_sub(carry);
+                self.status_flags = STATUS_FLAG_N;
+
+                if result == 0 {
+                    self.status_flags |= STATUS_FLAG_Z;
+                }
+
+                if (self.registers.register_a & 0xF) < ((self.registers.[< register_ $x >] & 0xF) + carry) {
+                    self.status_flags |= STATUS_FLAG_H;
+                }
+
+                if (self.registers.register_a as u16)
+                    .wrapping_sub(self.registers.[< register_ $x >] as u16)
+                    .wrapping_sub(carry as u16)
+                    > 0xFF
+                {
+                    self.status_flags |= STATUS_FLAG_C;
+                }
+
+                self.registers.register_a = result;
+            }
+        }
+    };
+}
+
+impl Cpu {
+    op_sbc_a_r!(b);
+    op_sbc_a_r!(c);
+    op_sbc_a_r!(d);
+    op_sbc_a_r!(e);
+    op_sbc_a_r!(h);
+    op_sbc_a_r!(l);
+    op_sbc_a_r!(a);
+
+    fn op_sbc_a_hl(&mut self) {
+        let carry: u8 = if (self.status_flags & STATUS_FLAG_C) != 0 {
+            1
+        } else {
+            0
+        };
+
+        let operand = self.memory.read(self.registers.hl());
+        let result = self
+            .registers
+            .register_a
+            .wrapping_sub(operand)
+            .wrapping_sub(carry);
+        self.status_flags = STATUS_FLAG_N;
+
+        if result == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        if (self.registers.register_a & 0xF) < ((operand & 0xF) + carry) {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        if (self.registers.register_a as u16)
+            .wrapping_sub(operand as u16)
+            .wrapping_sub(carry as u16)
+            > 0xFF
+        {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        self.registers.register_a = result;
     }
 }
