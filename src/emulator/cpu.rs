@@ -8,7 +8,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_inc_bc,        // 0x03 : INC BC
     Cpu::op_inc_b,         // 0x04 : INC B
     Cpu::op_dec_b,         // 0x05 : DEC B
-    Cpu::op_load_b_u8,     // 0x06 : LD B,d8
+    Cpu::op_ld_b_u8,       // 0x06 : LD B,d8
     Cpu::op_placeholder,   // 0x07 : RLCA
     Cpu::op_placeholder,   // 0x08 : LD (a16),SP
     Cpu::op_add_hl_bc,     // 0x09 : ADD HL,BC
@@ -16,7 +16,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_dec_bc,        // 0x0B : DEC BC
     Cpu::op_inc_c,         // 0x0C : INC C
     Cpu::op_dec_c,         // 0x0D : DEC C
-    Cpu::op_load_c_u8,     // 0x0E : LD C,d8
+    Cpu::op_ld_c_u8,       // 0x0E : LD C,d8
     Cpu::op_placeholder,   // 0x0F : RRCA
     Cpu::op_placeholder,   // 0x10 : STOP 0
     Cpu::op_placeholder,   // 0x11 : LD DE,d16
@@ -24,7 +24,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_inc_de,        // 0x13 : INC DE
     Cpu::op_inc_d,         // 0x14 : INC D
     Cpu::op_dec_d,         // 0x15 : DEC D
-    Cpu::op_load_d_u8,     // 0x16 : LD D,d8
+    Cpu::op_ld_d_u8,       // 0x16 : LD D,d8
     Cpu::op_placeholder,   // 0x17 : RLA
     Cpu::op_placeholder,   // 0x18 : JR r8
     Cpu::op_add_hl_de,     // 0x19 : ADD HL,DE
@@ -32,7 +32,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_dec_de,        // 0x1B : DEC DE
     Cpu::op_inc_e,         // 0x1C : INC E
     Cpu::op_dec_e,         // 0x1D : DEC E
-    Cpu::op_load_e_u8,     // 0x1E : LD E,d8
+    Cpu::op_ld_e_u8,       // 0x1E : LD E,d8
     Cpu::op_placeholder,   // 0x1F : RRA
     Cpu::op_placeholder,   // 0x20 : JR NZ,r8
     Cpu::op_placeholder,   // 0x21 : LD HL,d16
@@ -40,7 +40,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_inc_hl,        // 0x23 : INC HL
     Cpu::op_inc_h,         // 0x24 : INC H
     Cpu::op_dec_h,         // 0x25 : DEC H
-    Cpu::op_load_h_u8,     // 0x26 : LD H,d8
+    Cpu::op_ld_h_u8,       // 0x26 : LD H,d8
     Cpu::op_daa,           // 0x27 : DAA
     Cpu::op_placeholder,   // 0x28 : JR Z,r8
     Cpu::op_add_hl_hl,     // 0x29 : ADD HL,HL
@@ -48,7 +48,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_dec_hl,        // 0x2B : DEC HL
     Cpu::op_inc_l,         // 0x2C : INC L
     Cpu::op_dec_l,         // 0x2D : DEC L
-    Cpu::op_load_l_u8,     // 0x2E : LD L,d8
+    Cpu::op_ld_l_u8,       // 0x2E : LD L,d8
     Cpu::op_cpl,           // 0x2F : CPL
     Cpu::op_placeholder,   // 0x30 : JR NC,r8
     Cpu::op_placeholder,   // 0x31 : LD SP,d16
@@ -64,7 +64,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_dec_sp,        // 0x3B : DEC SP
     Cpu::op_inc_a,         // 0x3C : INC A
     Cpu::op_dec_a,         // 0x3D : DEC A
-    Cpu::op_load_a_u8,     // 0x3E : LD A,d8
+    Cpu::op_ld_a_u8,       // 0x3E : LD A,d8
     Cpu::op_ccf,           // 0x3F : CCF
     Cpu::op_load_b_b,      // 0x40 : LD B,B
     Cpu::op_load_b_c,      // 0x41 : LD B,C
@@ -405,24 +405,34 @@ impl Cpu {
     }
 }
 
-macro_rules! op_load_r_u8 {
-    ($x:tt) => {
-        paste! {
-            fn [< op_load_ $x _u8 >] (&mut self) {
-                self.registers. [< register_ $x >] = self.fetch_next_byte();
-            }
-        }
-    };
-}
-
 impl Cpu {
-    op_load_r_u8!(b);
-    op_load_r_u8!(c);
-    op_load_r_u8!(d);
-    op_load_r_u8!(e);
-    op_load_r_u8!(h);
-    op_load_r_u8!(l);
-    op_load_r_u8!(a);
+    fn op_ld_a_u8(&mut self) {
+        self.registers.register_a = self.fetch_next_byte();
+    }
+
+    fn op_ld_b_u8(&mut self) {
+        self.registers.register_b = self.fetch_next_byte();
+    }
+
+    fn op_ld_c_u8(&mut self) {
+        self.registers.register_c = self.fetch_next_byte();
+    }
+
+    fn op_ld_d_u8(&mut self) {
+        self.registers.register_d = self.fetch_next_byte();
+    }
+
+    fn op_ld_e_u8(&mut self) {
+        self.registers.register_e = self.fetch_next_byte();
+    }
+
+    fn op_ld_h_u8(&mut self) {
+        self.registers.register_h = self.fetch_next_byte();
+    }
+
+    fn op_ld_l_u8(&mut self) {
+        self.registers.register_l = self.fetch_next_byte();
+    }
 }
 
 macro_rules! op_load_r_r {
