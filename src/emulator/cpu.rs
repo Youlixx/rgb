@@ -1,3 +1,5 @@
+use std::result;
+
 use super::memory::Memory;
 use paste::paste;
 
@@ -41,7 +43,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_inc_h,         // 0x24 : INC H
     Cpu::op_dec_h,         // 0x25 : DEC H
     Cpu::op_load_h_u8,     // 0x26 : LD H,d8
-    Cpu::op_placeholder,   // 0x27 : DAA
+    Cpu::op_daa,           // 0x27 : DAA
     Cpu::op_placeholder,   // 0x28 : JR Z,r8
     Cpu::op_placeholder,   // 0x29 : ADD HL,HL
     Cpu::op_load_a_hl_inc, // 0x2A : LD A,(HL+)
@@ -49,7 +51,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_inc_l,         // 0x2C : INC L
     Cpu::op_dec_l,         // 0x2D : DEC L
     Cpu::op_load_l_u8,     // 0x2E : LD L,d8
-    Cpu::op_placeholder,   // 0x2F : CPL
+    Cpu::op_cpl,           // 0x2F : CPL
     Cpu::op_placeholder,   // 0x30 : JR NC,r8
     Cpu::op_placeholder,   // 0x31 : LD SP,d16
     Cpu::op_load_hl_dec_a, // 0x32 : LD (HL-),A
@@ -57,7 +59,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_inc_hl,        // 0x34 : INC (HL)
     Cpu::op_dec_hl,        // 0x35 : DEC (HL)
     Cpu::op_load_hl_u8,    // 0x36 : LD (HL),d8
-    Cpu::op_placeholder,   // 0x37 : SCF
+    Cpu::op_scf,           // 0x37 : SCF
     Cpu::op_placeholder,   // 0x38 : JR C,r8
     Cpu::op_placeholder,   // 0x39 : ADD HL,SP
     Cpu::op_load_a_hl_dec, // 0x3A : LD A,(HL-)
@@ -65,7 +67,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_inc_a,         // 0x3C : INC A
     Cpu::op_dec_a,         // 0x3D : DEC A
     Cpu::op_load_a_u8,     // 0x3E : LD A,d8
-    Cpu::op_placeholder,   // 0x3F : CCF
+    Cpu::op_ccf,           // 0x3F : CCF
     Cpu::op_load_b_b,      // 0x40 : LD B,B
     Cpu::op_load_b_c,      // 0x41 : LD B,C
     Cpu::op_load_b_d,      // 0x42 : LD B,D
@@ -1076,5 +1078,56 @@ impl Cpu {
         let address = self.registers.hl();
         let value = self.op_dec(self.memory.read(address));
         self.memory.write(address, value);
+    }
+}
+
+impl Cpu {
+    fn op_daa(&mut self) {
+        let mut current_value = self.registers.register_a as i16;
+
+        self.status_flags &= !(STATUS_FLAG_Z | STATUS_FLAG_H);
+
+        if (self.status_flags & STATUS_FLAG_N) != 0 {
+            if (self.status_flags & STATUS_FLAG_H) != 0 {
+                current_value = current_value.wrapping_sub(0x06) & 0xFF;
+            }
+
+            if (self.status_flags & STATUS_FLAG_C) != 0 {
+                current_value = current_value.wrapping_sub(0x60);
+            }
+        } else {
+            if (self.status_flags & STATUS_FLAG_H) != 0 || (current_value & 0x0F) > 0x09 {
+                current_value = current_value.wrapping_add(0x06);
+            }
+
+            if (self.status_flags & STATUS_FLAG_C) != 0 || current_value > 0x9F {
+                current_value = current_value.wrapping_add(0x60);
+            }
+        }
+
+        if (current_value & 0xFF) == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        if (current_value & 0x0100) == 0x100 {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        self.registers.register_a = (current_value & 0xFF) as u8;
+    }
+
+    fn op_cpl(&mut self) {
+        self.registers.register_a = !self.registers.register_a;
+        self.status_flags |= STATUS_FLAG_H | STATUS_FLAG_N;
+    }
+
+    fn op_scf(&mut self) {
+        self.status_flags |= STATUS_FLAG_C;
+        self.status_flags &= !(STATUS_FLAG_H | STATUS_FLAG_N);
+    }
+
+    fn op_ccf(&mut self) {
+        self.status_flags ^= STATUS_FLAG_C;
+        self.status_flags &= !(STATUS_FLAG_H | STATUS_FLAG_N);
     }
 }
