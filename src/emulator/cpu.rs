@@ -6,7 +6,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x01 : LD BC,d16
     Cpu::op_load_bc_a,     // 0x02 : LD (BC),A
     Cpu::op_placeholder,   // 0x03 : INC BC
-    Cpu::op_placeholder,   // 0x04 : INC B
+    Cpu::op_inc_b,         // 0x04 : INC B
     Cpu::op_placeholder,   // 0x05 : DEC B
     Cpu::op_load_b_u8,     // 0x06 : LD B,d8
     Cpu::op_placeholder,   // 0x07 : RLCA
@@ -14,7 +14,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x09 : ADD HL,BC
     Cpu::op_load_a_bc,     // 0x0A : LD A,(BC)
     Cpu::op_placeholder,   // 0x0B : DEC BC
-    Cpu::op_placeholder,   // 0x0C : INC C
+    Cpu::op_inc_c,         // 0x0C : INC C
     Cpu::op_placeholder,   // 0x0D : DEC C
     Cpu::op_load_c_u8,     // 0x0E : LD C,d8
     Cpu::op_placeholder,   // 0x0F : RRCA
@@ -22,7 +22,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x11 : LD DE,d16
     Cpu::op_load_de_a,     // 0x12 : LD (DE),A
     Cpu::op_placeholder,   // 0x13 : INC DE
-    Cpu::op_placeholder,   // 0x14 : INC D
+    Cpu::op_inc_d,         // 0x14 : INC D
     Cpu::op_placeholder,   // 0x15 : DEC D
     Cpu::op_load_d_u8,     // 0x16 : LD D,d8
     Cpu::op_placeholder,   // 0x17 : RLA
@@ -30,7 +30,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x19 : ADD HL,DE
     Cpu::op_load_a_de,     // 0x1A : LD A,(DE)
     Cpu::op_placeholder,   // 0x1B : DEC DE
-    Cpu::op_placeholder,   // 0x1C : INC E
+    Cpu::op_inc_e,         // 0x1C : INC E
     Cpu::op_placeholder,   // 0x1D : DEC E
     Cpu::op_load_e_u8,     // 0x1E : LD E,d8
     Cpu::op_placeholder,   // 0x1F : RRA
@@ -38,7 +38,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x21 : LD HL,d16
     Cpu::op_load_hl_inc_a, // 0x22 : LD (HL+),A
     Cpu::op_placeholder,   // 0x23 : INC HL
-    Cpu::op_placeholder,   // 0x24 : INC H
+    Cpu::op_inc_h,         // 0x24 : INC H
     Cpu::op_placeholder,   // 0x25 : DEC H
     Cpu::op_load_h_u8,     // 0x26 : LD H,d8
     Cpu::op_placeholder,   // 0x27 : DAA
@@ -46,7 +46,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x29 : ADD HL,HL
     Cpu::op_load_a_hl_inc, // 0x2A : LD A,(HL+)
     Cpu::op_placeholder,   // 0x2B : DEC HL
-    Cpu::op_placeholder,   // 0x2C : INC L
+    Cpu::op_inc_l,         // 0x2C : INC L
     Cpu::op_placeholder,   // 0x2D : DEC L
     Cpu::op_load_l_u8,     // 0x2E : LD L,d8
     Cpu::op_placeholder,   // 0x2F : CPL
@@ -54,7 +54,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x31 : LD SP,d16
     Cpu::op_load_hl_dec_a, // 0x32 : LD (HL-),A
     Cpu::op_placeholder,   // 0x33 : INC SP
-    Cpu::op_placeholder,   // 0x34 : INC (HL)
+    Cpu::op_inc_hl,        // 0x34 : INC (HL)
     Cpu::op_placeholder,   // 0x35 : DEC (HL)
     Cpu::op_load_hl_u8,    // 0x36 : LD (HL),d8
     Cpu::op_placeholder,   // 0x37 : SCF
@@ -62,7 +62,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x39 : ADD HL,SP
     Cpu::op_load_a_hl_dec, // 0x3A : LD A,(HL-)
     Cpu::op_placeholder,   // 0x3B : DEC SP
-    Cpu::op_placeholder,   // 0x3C : INC A
+    Cpu::op_inc_a,         // 0x3C : INC A
     Cpu::op_placeholder,   // 0x3D : DEC A
     Cpu::op_load_a_u8,     // 0x3E : LD A,d8
     Cpu::op_placeholder,   // 0x3F : CCF
@@ -972,5 +972,56 @@ impl Cpu {
     fn op_cp_a_u8(&mut self) {
         let operand = self.fetch_next_byte();
         self.op_cp_a(operand);
+    }
+}
+
+impl Cpu {
+    fn op_inc(&mut self, operand: u8) -> u8 {
+        let result = operand.wrapping_add(1);
+        self.status_flags &= !(STATUS_FLAG_N | STATUS_FLAG_Z | STATUS_FLAG_H);
+
+        if result == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        if (result & 0xF) == 0 {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        result
+    }
+
+    fn op_inc_a(&mut self) {
+        self.registers.register_a = self.op_inc(self.registers.register_a);
+    }
+
+    fn op_inc_b(&mut self) {
+        self.registers.register_b = self.op_inc(self.registers.register_b);
+    }
+
+    fn op_inc_c(&mut self) {
+        self.registers.register_c = self.op_inc(self.registers.register_c);
+    }
+
+    fn op_inc_d(&mut self) {
+        self.registers.register_d = self.op_inc(self.registers.register_d);
+    }
+
+    fn op_inc_e(&mut self) {
+        self.registers.register_e = self.op_inc(self.registers.register_e);
+    }
+
+    fn op_inc_h(&mut self) {
+        self.registers.register_h = self.op_inc(self.registers.register_h);
+    }
+
+    fn op_inc_l(&mut self) {
+        self.registers.register_l = self.op_inc(self.registers.register_l);
+    }
+
+    fn op_inc_hl(&mut self) {
+        let address = self.registers.hl();
+        let value = self.op_inc(self.memory.read(address));
+        self.memory.write(address, value);
     }
 }
