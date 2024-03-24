@@ -130,14 +130,14 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_load_a_l,      // 0x7D : LD A,L
     Cpu::op_load_a_hl,     // 0x7E : LD A,(HL)
     Cpu::op_load_a_a,      // 0x7F : LD A,A
-    Cpu::op_placeholder,   // 0x80 : ADD A,B
-    Cpu::op_placeholder,   // 0x81 : ADD A,C
-    Cpu::op_placeholder,   // 0x82 : ADD A,D
-    Cpu::op_placeholder,   // 0x83 : ADD A,E
-    Cpu::op_placeholder,   // 0x84 : ADD A,H
-    Cpu::op_placeholder,   // 0x85 : ADD A,L
-    Cpu::op_placeholder,   // 0x86 : ADD A,(HL)
-    Cpu::op_placeholder,   // 0x87 : ADD A,A
+    Cpu::op_add_a_b,       // 0x80 : ADD A,B
+    Cpu::op_add_a_c,       // 0x81 : ADD A,C
+    Cpu::op_add_a_d,       // 0x82 : ADD A,D
+    Cpu::op_add_a_e,       // 0x83 : ADD A,E
+    Cpu::op_add_a_h,       // 0x84 : ADD A,H
+    Cpu::op_add_a_l,       // 0x85 : ADD A,L
+    Cpu::op_add_a_hl,      // 0x86 : ADD A,(HL)
+    Cpu::op_add_a_a,       // 0x87 : ADD A,A
     Cpu::op_placeholder,   // 0x88 : ADC A,B
     Cpu::op_placeholder,   // 0x89 : ADC A,C
     Cpu::op_placeholder,   // 0x8A : ADC A,D
@@ -260,6 +260,11 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0xFF : RST 38H
 ];
 
+const STATUS_FLAG_Z: u8 = 0x80;
+const STATUS_FLAG_N: u8 = 0x40;
+const STATUS_FLAG_H: u8 = 0x20;
+const STATUS_FLAG_C: u8 = 0x10;
+
 struct CpuRegisters {
     register_a: u8,
     register_b: u8,
@@ -306,6 +311,7 @@ pub struct Cpu {
     program_counter: u16,
 
     registers: CpuRegisters,
+    status_flags: u8,
 }
 
 impl Cpu {
@@ -314,6 +320,7 @@ impl Cpu {
             memory,
             program_counter: 0,
             registers: CpuRegisters::new(),
+            status_flags: 0,
         }
     }
 
@@ -514,4 +521,59 @@ impl Cpu {
     op_load_r_hl!(h);
     op_load_r_hl!(l);
     op_load_r_hl!(a);
+}
+
+macro_rules! op_add_a_r {
+    ($x:tt) => {
+        paste! {
+            fn [< op_add_a_ $x >] (&mut self) {
+                let result: u16 = (self.registers.register_a as u16) + (self.registers.[< register_ $x >] as u16);
+
+                if (result & 0xFF) == 0 {
+                    self.status_flags |= STATUS_FLAG_Z;
+                }
+
+                if ((self.registers.register_a & 0xF) + (self.registers.[< register_ $x >] & 0xF)) > 0xF {
+                    self.status_flags |= STATUS_FLAG_H;
+                }
+
+                if result > 0xFF {
+                    self.status_flags |= STATUS_FLAG_C;
+                }
+
+                self.status_flags &= !STATUS_FLAG_N;
+                self.registers.register_a = (result & 0xFF) as u8;
+            }
+        }
+    };
+}
+
+impl Cpu {
+    op_add_a_r!(b);
+    op_add_a_r!(c);
+    op_add_a_r!(d);
+    op_add_a_r!(e);
+    op_add_a_r!(h);
+    op_add_a_r!(l);
+    op_add_a_r!(a);
+
+    fn op_add_a_hl(&mut self) {
+        let operand = self.memory.read(self.registers.hl());
+        let result: u16 = (self.registers.register_a as u16) + (operand as u16);
+
+        if (result & 0xFF) == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        if ((self.registers.register_a & 0xF) + (operand & 0xF)) > 0xF {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        if result > 0xFF {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        self.status_flags &= !STATUS_FLAG_N;
+        self.registers.register_a = (result & 0xFF) as u8;
+    }
 }
