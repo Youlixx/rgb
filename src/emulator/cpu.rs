@@ -178,14 +178,14 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_xor_a_l,       // 0xAD : XOR L
     Cpu::op_xor_a_hl,      // 0xAE : XOR (HL)
     Cpu::op_xor_a_a,       // 0xAF : XOR A
-    Cpu::op_placeholder,   // 0xB0 : OR B
-    Cpu::op_placeholder,   // 0xB1 : OR C
-    Cpu::op_placeholder,   // 0xB2 : OR D
-    Cpu::op_placeholder,   // 0xB3 : OR E
-    Cpu::op_placeholder,   // 0xB4 : OR H
-    Cpu::op_placeholder,   // 0xB5 : OR L
-    Cpu::op_placeholder,   // 0xB6 : OR (HL)
-    Cpu::op_placeholder,   // 0xB7 : OR A
+    Cpu::op_or_a_b,        // 0xB0 : OR B
+    Cpu::op_or_a_c,        // 0xB1 : OR C
+    Cpu::op_or_a_d,        // 0xB2 : OR D
+    Cpu::op_or_a_e,        // 0xB3 : OR E
+    Cpu::op_or_a_h,        // 0xB4 : OR H
+    Cpu::op_or_a_l,        // 0xB5 : OR L
+    Cpu::op_or_a_hl,       // 0xB6 : OR (HL)
+    Cpu::op_or_a_a,        // 0xB7 : OR A
     Cpu::op_placeholder,   // 0xB8 : CP B
     Cpu::op_placeholder,   // 0xB9 : CP C
     Cpu::op_placeholder,   // 0xBA : CP D
@@ -837,6 +837,40 @@ impl Cpu {
 
     fn op_xor_a_hl(&mut self) {
         self.registers.register_a ^= self.memory.read(self.registers.hl());
+        self.status_flags = STATUS_FLAG_H;
+
+        if self.registers.register_a == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+    }
+}
+
+macro_rules! op_or_a_r {
+    ($x:tt) => {
+        paste! {
+            fn [< op_or_a_ $x >] (&mut self) {
+                self.registers.register_a |= self.registers.[< register_ $x >];
+                self.status_flags = STATUS_FLAG_H;
+
+                if self.registers.register_a == 0 {
+                    self.status_flags |= STATUS_FLAG_Z;
+                }
+            }
+        }
+    };
+}
+
+impl Cpu {
+    op_or_a_r!(b);
+    op_or_a_r!(c);
+    op_or_a_r!(d);
+    op_or_a_r!(e);
+    op_or_a_r!(h);
+    op_or_a_r!(l);
+    op_or_a_r!(a);
+
+    fn op_or_a_hl(&mut self) {
+        self.registers.register_a |= self.memory.read(self.registers.hl());
         self.status_flags = STATUS_FLAG_H;
 
         if self.registers.register_a == 0 {
