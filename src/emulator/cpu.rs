@@ -9,7 +9,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_dec_b,       // 0x05 : DEC B
     Cpu::op_ld_b_u8,     // 0x06 : LD B,d8
     Cpu::op_placeholder, // 0x07 : RLCA
-    Cpu::op_placeholder, // 0x08 : LD (a16),SP
+    Cpu::op_ld_u16_sp,   // 0x08 : LD (a16),SP
     Cpu::op_add_hl_bc,   // 0x09 : ADD HL,BC
     Cpu::op_ld_a_bc,     // 0x0A : LD A,(BC)
     Cpu::op_dec_bc,      // 0x0B : DEC BC
@@ -361,8 +361,8 @@ impl Cpu {
     }
 
     fn fetch_u16(&mut self) -> u16 {
-        let msb = self.fetch_u8();
         let lsb = self.fetch_u8();
+        let msb = self.fetch_u8();
 
         (lsb as u16) | ((msb as u16) << 8)
     }
@@ -650,6 +650,15 @@ impl Cpu {
 
     fn op_ld_sp_u16(&mut self) {
         self.stack_pointer = self.fetch_u16();
+    }
+
+    fn op_ld_u16_sp(&mut self) {
+        let address = self.fetch_u16();
+
+        self.memory
+            .write(address, (self.stack_pointer & 0xFF) as u8);
+        self.memory
+            .write(address + 1, (self.stack_pointer >> 8) as u8);
     }
 }
 
