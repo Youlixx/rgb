@@ -1,5 +1,3 @@
-use std::result;
-
 use super::memory::Memory;
 use paste::paste;
 
@@ -7,7 +5,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_nop,           // 0x00 : NOP
     Cpu::op_placeholder,   // 0x01 : LD BC,d16
     Cpu::op_load_bc_a,     // 0x02 : LD (BC),A
-    Cpu::op_placeholder,   // 0x03 : INC BC
+    Cpu::op_inc_bc,        // 0x03 : INC BC
     Cpu::op_inc_b,         // 0x04 : INC B
     Cpu::op_dec_b,         // 0x05 : DEC B
     Cpu::op_load_b_u8,     // 0x06 : LD B,d8
@@ -23,7 +21,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x10 : STOP 0
     Cpu::op_placeholder,   // 0x11 : LD DE,d16
     Cpu::op_load_de_a,     // 0x12 : LD (DE),A
-    Cpu::op_placeholder,   // 0x13 : INC DE
+    Cpu::op_inc_de,        // 0x13 : INC DE
     Cpu::op_inc_d,         // 0x14 : INC D
     Cpu::op_dec_d,         // 0x15 : DEC D
     Cpu::op_load_d_u8,     // 0x16 : LD D,d8
@@ -39,7 +37,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x20 : JR NZ,r8
     Cpu::op_placeholder,   // 0x21 : LD HL,d16
     Cpu::op_load_hl_inc_a, // 0x22 : LD (HL+),A
-    Cpu::op_placeholder,   // 0x23 : INC HL
+    Cpu::op_inc_hl,        // 0x23 : INC HL
     Cpu::op_inc_h,         // 0x24 : INC H
     Cpu::op_dec_h,         // 0x25 : DEC H
     Cpu::op_load_h_u8,     // 0x26 : LD H,d8
@@ -55,8 +53,8 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0x30 : JR NC,r8
     Cpu::op_placeholder,   // 0x31 : LD SP,d16
     Cpu::op_load_hl_dec_a, // 0x32 : LD (HL-),A
-    Cpu::op_placeholder,   // 0x33 : INC SP
-    Cpu::op_inc_hl,        // 0x34 : INC (HL)
+    Cpu::op_inc_sp,        // 0x33 : INC SP
+    Cpu::op_inc_hl_ind,    // 0x34 : INC (HL)
     Cpu::op_dec_hl,        // 0x35 : DEC (HL)
     Cpu::op_load_hl_u8,    // 0x36 : LD (HL),d8
     Cpu::op_scf,           // 0x37 : SCF
@@ -294,8 +292,18 @@ impl CpuRegisters {
         ((self.register_b as u16) << 8) | self.register_c as u16
     }
 
+    fn set_bc(&mut self, value: u16) {
+        self.register_b = (value >> 8) as u8;
+        self.register_c = (value & 0xFF) as u8;
+    }
+
     fn de(&self) -> u16 {
         ((self.register_d as u16) << 8) | self.register_e as u16
+    }
+
+    fn set_de(&mut self, value: u16) {
+        self.register_d = (value >> 8) as u8;
+        self.register_e = (value & 0xFF) as u8;
     }
 
     fn hl(&self) -> u16 {
@@ -314,6 +322,7 @@ pub struct Cpu {
 
     registers: CpuRegisters,
     status_flags: u8,
+    stack_pointer: u16,
 }
 
 impl Cpu {
@@ -323,6 +332,7 @@ impl Cpu {
             program_counter: 0,
             registers: CpuRegisters::new(),
             status_flags: 0,
+            stack_pointer: 0,
         }
     }
 
@@ -978,7 +988,7 @@ impl Cpu {
 }
 
 impl Cpu {
-    fn op_inc(&mut self, operand: u8) -> u8 {
+    fn op_inc_u8(&mut self, operand: u8) -> u8 {
         let result = operand.wrapping_add(1);
         self.status_flags &= !(STATUS_FLAG_N | STATUS_FLAG_Z | STATUS_FLAG_H);
 
@@ -994,37 +1004,55 @@ impl Cpu {
     }
 
     fn op_inc_a(&mut self) {
-        self.registers.register_a = self.op_inc(self.registers.register_a);
+        self.registers.register_a = self.op_inc_u8(self.registers.register_a);
     }
 
     fn op_inc_b(&mut self) {
-        self.registers.register_b = self.op_inc(self.registers.register_b);
+        self.registers.register_b = self.op_inc_u8(self.registers.register_b);
     }
 
     fn op_inc_c(&mut self) {
-        self.registers.register_c = self.op_inc(self.registers.register_c);
+        self.registers.register_c = self.op_inc_u8(self.registers.register_c);
     }
 
     fn op_inc_d(&mut self) {
-        self.registers.register_d = self.op_inc(self.registers.register_d);
+        self.registers.register_d = self.op_inc_u8(self.registers.register_d);
     }
 
     fn op_inc_e(&mut self) {
-        self.registers.register_e = self.op_inc(self.registers.register_e);
+        self.registers.register_e = self.op_inc_u8(self.registers.register_e);
     }
 
     fn op_inc_h(&mut self) {
-        self.registers.register_h = self.op_inc(self.registers.register_h);
+        self.registers.register_h = self.op_inc_u8(self.registers.register_h);
     }
 
     fn op_inc_l(&mut self) {
-        self.registers.register_l = self.op_inc(self.registers.register_l);
+        self.registers.register_l = self.op_inc_u8(self.registers.register_l);
+    }
+
+    fn op_inc_hl_ind(&mut self) {
+        let address = self.registers.hl();
+        let value = self.op_inc_u8(self.memory.read(address));
+        self.memory.write(address, value);
+    }
+}
+
+impl Cpu {
+    fn op_inc_bc(&mut self) {
+        self.registers.set_bc(self.registers.bc().wrapping_add(1));
+    }
+
+    fn op_inc_de(&mut self) {
+        self.registers.set_bc(self.registers.de().wrapping_add(1));
     }
 
     fn op_inc_hl(&mut self) {
-        let address = self.registers.hl();
-        let value = self.op_inc(self.memory.read(address));
-        self.memory.write(address, value);
+        self.registers.set_bc(self.registers.hl().wrapping_add(1));
+    }
+
+    fn op_inc_sp(&mut self) {
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
     }
 }
 
