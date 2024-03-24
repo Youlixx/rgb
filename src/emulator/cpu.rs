@@ -521,6 +521,21 @@ impl Cpu {
             self.status_flags |= STATUS_FLAG_C;
         }
     }
+
+    fn run_inc_u8_and_update_flags(&mut self, operand: u8) -> u8 {
+        let result = operand.wrapping_add(1);
+        self.status_flags &= !(STATUS_FLAG_N | STATUS_FLAG_Z | STATUS_FLAG_H);
+
+        if result == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        if (result & 0xF) == 0 {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        result
+    }
 }
 
 /// Gameboy SM63 opcode implementations
@@ -547,6 +562,13 @@ impl Cpu {
     fn op_ld_bc_a(&mut self) {
         self.memory
             .write(self.registers.bc(), self.registers.register_a);
+    }
+
+    /// Opcode 0x04: [INC B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
+    ///
+    /// Increments data in the 8-bit register B (1 machine cycles).
+    fn op_inc_b(&mut self) {
+        self.registers.register_b = self.run_inc_u8_and_update_flags(self.registers.register_b);
     }
 
     /// Opcode 0x06: [LD B,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
@@ -578,6 +600,13 @@ impl Cpu {
         self.registers.register_a = self.memory.read(self.registers.bc());
     }
 
+    /// Opcode 0x0C: [INC C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
+    ///
+    /// Increments data in the 8-bit register C (1 machine cycles).
+    fn op_inc_c(&mut self) {
+        self.registers.register_c = self.run_inc_u8_and_update_flags(self.registers.register_c);
+    }
+
     /// Opcode 0x0E: [LD C,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
     ///
     /// Load to the 8-bit register C, the immediate data following the opcode (2
@@ -604,6 +633,13 @@ impl Cpu {
             .write(self.registers.de(), self.registers.register_a);
     }
 
+    /// Opcode 0x14: [INC D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
+    ///
+    /// Increments data in the 8-bit register D (1 machine cycles).
+    fn op_inc_d(&mut self) {
+        self.registers.register_d = self.run_inc_u8_and_update_flags(self.registers.register_d);
+    }
+
     /// Opcode 0x16: [LD D,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
     ///
     /// Load to the 8-bit register D, the immediate data following the opcode (2
@@ -618,6 +654,13 @@ impl Cpu {
     /// 16-bit register DE (2 machine cycles).
     fn op_ld_a_de(&mut self) {
         self.registers.register_a = self.memory.read(self.registers.de());
+    }
+
+    /// Opcode 0x1C: [INC E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
+    ///
+    /// Increments data in the 8-bit register E (1 machine cycles).
+    fn op_inc_e(&mut self) {
+        self.registers.register_e = self.run_inc_u8_and_update_flags(self.registers.register_e);
     }
 
     /// Opcode 0x1E: [LD E,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
@@ -648,6 +691,13 @@ impl Cpu {
         self.registers.set_hl(address + 1);
     }
 
+    /// Opcode 0x24: [INC H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
+    ///
+    /// Increments data in the 8-bit register H (1 machine cycles).
+    fn op_inc_h(&mut self) {
+        self.registers.register_h = self.run_inc_u8_and_update_flags(self.registers.register_h);
+    }
+
     /// Opcode 0x26: [LD H,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
     ///
     /// Load to the 8-bit register H, the immediate data following the opcode (2
@@ -665,6 +715,13 @@ impl Cpu {
         let address = self.registers.hl();
         self.registers.register_a = self.memory.read(address);
         self.registers.set_hl(address + 1);
+    }
+
+    /// Opcode 0x2C: [INC L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
+    ///
+    /// Increments data in the 8-bit register L (1 machine cycles).
+    fn op_inc_l(&mut self) {
+        self.registers.register_l = self.run_inc_u8_and_update_flags(self.registers.register_l);
     }
 
     /// Opcode 0x2E: [LD L,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
@@ -694,6 +751,16 @@ impl Cpu {
         self.registers.set_hl(address - 1);
     }
 
+    /// Opcode 0x34: [INC (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=56)
+    ///
+    /// Increments data at the absolute address specified by the 16-bit register HL (3
+    /// machine cycles).
+    fn op_inc_hl_ind(&mut self) {
+        let address = self.registers.hl();
+        let value = self.run_inc_u8_and_update_flags(self.memory.read(address));
+        self.memory.write(address, value);
+    }
+
     /// Opcode 0x36: [LD (HL),d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=19)
     ///
     /// Load to the absolute address specified by the 16-bit register HL, the immediate
@@ -712,6 +779,13 @@ impl Cpu {
         let address = self.registers.hl();
         self.registers.register_a = self.memory.read(address);
         self.registers.set_hl(address - 1);
+    }
+
+    /// Opcode 0x3C: [INC A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=55)
+    ///
+    /// Increments data in the 8-bit register A (1 machine cycles).
+    fn op_inc_a(&mut self) {
+        self.registers.register_a = self.run_inc_u8_and_update_flags(self.registers.register_a);
     }
 
     /// Opcode 0x3E: [LD A,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
@@ -1969,57 +2043,6 @@ impl Cpu {
         if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
             self.status_flags |= STATUS_FLAG_C;
         }
-    }
-}
-
-impl Cpu {
-    fn op_inc_u8(&mut self, operand: u8) -> u8 {
-        let result = operand.wrapping_add(1);
-        self.status_flags &= !(STATUS_FLAG_N | STATUS_FLAG_Z | STATUS_FLAG_H);
-
-        if result == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
-        }
-
-        if (result & 0xF) == 0 {
-            self.status_flags |= STATUS_FLAG_H;
-        }
-
-        result
-    }
-
-    fn op_inc_a(&mut self) {
-        self.registers.register_a = self.op_inc_u8(self.registers.register_a);
-    }
-
-    fn op_inc_b(&mut self) {
-        self.registers.register_b = self.op_inc_u8(self.registers.register_b);
-    }
-
-    fn op_inc_c(&mut self) {
-        self.registers.register_c = self.op_inc_u8(self.registers.register_c);
-    }
-
-    fn op_inc_d(&mut self) {
-        self.registers.register_d = self.op_inc_u8(self.registers.register_d);
-    }
-
-    fn op_inc_e(&mut self) {
-        self.registers.register_e = self.op_inc_u8(self.registers.register_e);
-    }
-
-    fn op_inc_h(&mut self) {
-        self.registers.register_h = self.op_inc_u8(self.registers.register_h);
-    }
-
-    fn op_inc_l(&mut self) {
-        self.registers.register_l = self.op_inc_u8(self.registers.register_l);
-    }
-
-    fn op_inc_hl_ind(&mut self) {
-        let address = self.registers.hl();
-        let value = self.op_inc_u8(self.memory.read(address));
-        self.memory.write(address, value);
     }
 }
 
