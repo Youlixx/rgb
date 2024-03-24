@@ -114,14 +114,14 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_nop,           // 0x6D : LD L,L
     Cpu::op_load_l_hl,     // 0x6E : LD L,(HL)
     Cpu::op_ld_l_a,        // 0x6F : LD L,A
-    Cpu::op_load_hl_b,     // 0x70 : LD (HL),B
-    Cpu::op_load_hl_c,     // 0x71 : LD (HL),C
-    Cpu::op_load_hl_d,     // 0x72 : LD (HL),D
-    Cpu::op_load_hl_e,     // 0x73 : LD (HL),E
-    Cpu::op_load_hl_h,     // 0x74 : LD (HL),H
-    Cpu::op_load_hl_l,     // 0x75 : LD (HL),L
+    Cpu::op_ld_hl_b,       // 0x70 : LD (HL),B
+    Cpu::op_ld_hl_c,       // 0x71 : LD (HL),C
+    Cpu::op_ld_hl_d,       // 0x72 : LD (HL),D
+    Cpu::op_ld_hl_e,       // 0x73 : LD (HL),E
+    Cpu::op_ld_hl_h,       // 0x74 : LD (HL),H
+    Cpu::op_ld_hl_l,       // 0x75 : LD (HL),L
     Cpu::op_halt,          // 0x76 : HALT
-    Cpu::op_load_hl_a,     // 0x77 : LD (HL),A
+    Cpu::op_ld_hl_a,       // 0x77 : LD (HL),A
     Cpu::op_ld_a_b,        // 0x78 : LD A,B
     Cpu::op_ld_a_c,        // 0x79 : LD A,C
     Cpu::op_ld_a_d,        // 0x7A : LD A,D
@@ -605,25 +605,38 @@ impl Cpu {
     }
 }
 
-macro_rules! op_load_hl_r {
-    ($x:tt) => {
-        paste! {
-            fn [< op_load_hl _ $x >] (&mut self) {
-                self.memory
-                    .write(self.registers.hl(), self.registers.[< register_ $x >]);
-            }
-        }
-    };
-}
-
 impl Cpu {
-    op_load_hl_r!(b);
-    op_load_hl_r!(c);
-    op_load_hl_r!(d);
-    op_load_hl_r!(e);
-    op_load_hl_r!(h);
-    op_load_hl_r!(l);
-    op_load_hl_r!(a);
+    fn op_ld_hl(&mut self, value: u8) {
+        self.memory.write(self.registers.hl(), value);
+    }
+
+    fn op_ld_hl_a(&mut self) {
+        self.op_ld_hl(self.registers.register_a);
+    }
+
+    fn op_ld_hl_b(&mut self) {
+        self.op_ld_hl(self.registers.register_b);
+    }
+
+    fn op_ld_hl_c(&mut self) {
+        self.op_ld_hl(self.registers.register_c);
+    }
+
+    fn op_ld_hl_d(&mut self) {
+        self.op_ld_hl(self.registers.register_d);
+    }
+
+    fn op_ld_hl_e(&mut self) {
+        self.op_ld_hl(self.registers.register_e);
+    }
+
+    fn op_ld_hl_h(&mut self) {
+        self.op_ld_hl(self.registers.register_h);
+    }
+
+    fn op_ld_hl_l(&mut self) {
+        self.op_ld_hl(self.registers.register_l);
+    }
 }
 
 macro_rules! op_load_r_hl {
