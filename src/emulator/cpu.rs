@@ -200,7 +200,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0xC3 : JP a16
     Cpu::op_placeholder,   // 0xC4 : CALL NZ,a16
     Cpu::op_placeholder,   // 0xC5 : PUSH BC
-    Cpu::op_placeholder,   // 0xC6 : ADD A,d8
+    Cpu::op_add_a_u8,      // 0xC6 : ADD A,d8
     Cpu::op_placeholder,   // 0xC7 : RST 00H
     Cpu::op_placeholder,   // 0xC8 : RET Z
     Cpu::op_placeholder,   // 0xC9 : RET
@@ -523,42 +523,8 @@ impl Cpu {
     op_load_r_hl!(a);
 }
 
-macro_rules! op_add_a_r {
-    ($x:tt) => {
-        paste! {
-            fn [< op_add_a_ $x >] (&mut self) {
-                let result: u16 = (self.registers.register_a as u16) + (self.registers.[< register_ $x >] as u16);
-                self.status_flags = 0;
-
-                if (result & 0xFF) == 0 {
-                    self.status_flags |= STATUS_FLAG_Z;
-                }
-
-                if ((self.registers.register_a & 0xF) + (self.registers.[< register_ $x >] & 0xF)) > 0xF {
-                    self.status_flags |= STATUS_FLAG_H;
-                }
-
-                if result > 0xFF {
-                    self.status_flags |= STATUS_FLAG_C;
-                }
-
-                self.registers.register_a = (result & 0xFF) as u8;
-            }
-        }
-    };
-}
-
 impl Cpu {
-    op_add_a_r!(b);
-    op_add_a_r!(c);
-    op_add_a_r!(d);
-    op_add_a_r!(e);
-    op_add_a_r!(h);
-    op_add_a_r!(l);
-    op_add_a_r!(a);
-
-    fn op_add_a_hl(&mut self) {
-        let operand = self.memory.read(self.registers.hl());
+    fn op_add_a(&mut self, operand: u8) {
         let result: u16 = (self.registers.register_a as u16) + (operand as u16);
         self.status_flags = 0;
 
@@ -575,6 +541,43 @@ impl Cpu {
         }
 
         self.registers.register_a = (result & 0xFF) as u8;
+    }
+
+    fn op_add_a_a(&mut self) {
+        self.op_add_a(self.registers.register_a);
+    }
+
+    fn op_add_a_b(&mut self) {
+        self.op_add_a(self.registers.register_b);
+    }
+
+    fn op_add_a_c(&mut self) {
+        self.op_add_a(self.registers.register_c);
+    }
+
+    fn op_add_a_d(&mut self) {
+        self.op_add_a(self.registers.register_d);
+    }
+
+    fn op_add_a_e(&mut self) {
+        self.op_add_a(self.registers.register_e);
+    }
+
+    fn op_add_a_h(&mut self) {
+        self.op_add_a(self.registers.register_h);
+    }
+
+    fn op_add_a_l(&mut self) {
+        self.op_add_a(self.registers.register_l);
+    }
+
+    fn op_add_a_hl(&mut self) {
+        self.op_add_a(self.memory.read(self.registers.hl()));
+    }
+
+    fn op_add_a_u8(&mut self) {
+        let operand = self.fetch_next_byte();
+        self.op_add_a(operand);
     }
 }
 
