@@ -186,14 +186,14 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_or_a_l,        // 0xB5 : OR L
     Cpu::op_or_a_hl,       // 0xB6 : OR (HL)
     Cpu::op_or_a_a,        // 0xB7 : OR A
-    Cpu::op_placeholder,   // 0xB8 : CP B
-    Cpu::op_placeholder,   // 0xB9 : CP C
-    Cpu::op_placeholder,   // 0xBA : CP D
-    Cpu::op_placeholder,   // 0xBB : CP E
-    Cpu::op_placeholder,   // 0xBC : CP H
-    Cpu::op_placeholder,   // 0xBD : CP L
-    Cpu::op_placeholder,   // 0xBE : CP (HL)
-    Cpu::op_placeholder,   // 0xBF : CP A
+    Cpu::op_cp_a_b,        // 0xB8 : CP B
+    Cpu::op_cp_a_c,        // 0xB9 : CP C
+    Cpu::op_cp_a_d,        // 0xBA : CP D
+    Cpu::op_cp_a_e,        // 0xBB : CP E
+    Cpu::op_cp_a_h,        // 0xBC : CP H
+    Cpu::op_cp_a_l,        // 0xBD : CP L
+    Cpu::op_cp_a_hl,       // 0xBE : CP (HL)
+    Cpu::op_cp_a_a,        // 0xBF : CP A
     Cpu::op_placeholder,   // 0xC0 : RET NZ
     Cpu::op_placeholder,   // 0xC1 : POP BC
     Cpu::op_placeholder,   // 0xC2 : JP NZ,a16
@@ -875,6 +875,55 @@ impl Cpu {
 
         if self.registers.register_a == 0 {
             self.status_flags |= STATUS_FLAG_Z;
+        }
+    }
+}
+
+macro_rules! op_cp_a_r {
+    ($x:tt) => {
+        paste! {
+            fn [< op_cp_a_ $x >] (&mut self) {
+                self.status_flags = STATUS_FLAG_N;
+
+                if self.registers.register_a == self.registers.[< register_ $x >] {
+                    self.status_flags |= STATUS_FLAG_Z;
+                }
+
+                if (self.registers.register_a & 0xF) < (self.registers.[< register_ $x >] & 0xF) {
+                    self.status_flags |= STATUS_FLAG_H;
+                }
+
+                if self.registers.register_a < self.registers.[< register_ $x >] {
+                    self.status_flags |= STATUS_FLAG_C;
+                }
+            }
+        }
+    };
+}
+
+impl Cpu {
+    op_cp_a_r!(b);
+    op_cp_a_r!(c);
+    op_cp_a_r!(d);
+    op_cp_a_r!(e);
+    op_cp_a_r!(h);
+    op_cp_a_r!(l);
+    op_cp_a_r!(a);
+
+    fn op_cp_a_hl(&mut self) {
+        let operand = self.memory.read(self.registers.hl());
+        self.status_flags = STATUS_FLAG_N;
+
+        if self.registers.register_a == operand {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        if (self.registers.register_a & 0xF) < (operand & 0xF) {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        if self.registers.register_a < operand {
+            self.status_flags |= STATUS_FLAG_C;
         }
     }
 }
