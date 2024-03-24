@@ -1,5 +1,4 @@
 use super::memory::Memory;
-use paste::paste;
 
 const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_nop,           // 0x00 : NOP
