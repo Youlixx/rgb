@@ -400,6 +400,32 @@ impl Cpu {
 
         self.registers.register_a = (result & 0xFF) as u8;
     }
+
+    fn run_adc_and_update_flags(&mut self, operand: u8) {
+        let carry: u16 = if (self.status_flags & STATUS_FLAG_C) != 0 {
+            1
+        } else {
+            0
+        };
+
+        let result: u16 = (self.registers.register_a as u16) + (operand as u16) + carry;
+
+        self.status_flags = 0;
+
+        if (result & 0xFF) == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        if ((self.registers.register_a & 0xF) + (operand & 0xF) + (carry as u8)) > 0xF {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        if result > 0xFF {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        self.registers.register_a = (result & 0xFF) as u8;
+    }
 }
 
 /// Gameboy SM63 opcode implementations
@@ -1118,7 +1144,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the carry flag and the 8-bit register b, and
     /// stores the result back into the A register (1 machine cycle).
     fn op_adc_a_b(&mut self) {
-        self.op_adc_a(self.registers.register_b);
+        self.run_adc_and_update_flags(self.registers.register_b);
     }
 
     /// Opcode 0x89: [ADC A,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=43)
@@ -1126,7 +1152,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the carry flag and the 8-bit register C, and
     /// stores the result back into the A register (1 machine cycle).
     fn op_adc_a_c(&mut self) {
-        self.op_adc_a(self.registers.register_c);
+        self.run_adc_and_update_flags(self.registers.register_c);
     }
 
     /// Opcode 0x8A: [ADC A,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=43)
@@ -1134,7 +1160,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the carry flag and the 8-bit register D, and
     /// stores the result back into the A register (1 machine cycle).
     fn op_adc_a_d(&mut self) {
-        self.op_adc_a(self.registers.register_d);
+        self.run_adc_and_update_flags(self.registers.register_d);
     }
 
     /// Opcode 0x8B: [ADC A,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=43)
@@ -1142,7 +1168,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the carry flag and the 8-bit register E, and
     /// stores the result back into the A register (1 machine cycle).
     fn op_adc_a_e(&mut self) {
-        self.op_adc_a(self.registers.register_e);
+        self.run_adc_and_update_flags(self.registers.register_e);
     }
 
     /// Opcode 0x8C: [ADC A,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=43)
@@ -1150,7 +1176,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the carry flag and the 8-bit register H, and
     /// stores the result back into the A register (1 machine cycle).
     fn op_adc_a_h(&mut self) {
-        self.op_adc_a(self.registers.register_h);
+        self.run_adc_and_update_flags(self.registers.register_h);
     }
 
     /// Opcode 0x8D: [ADC A,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=43)
@@ -1158,7 +1184,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the carry flag and the 8-bit register L, and
     /// stores the result back into the A register (1 machine cycle).
     fn op_adc_a_l(&mut self) {
-        self.op_adc_a(self.registers.register_l);
+        self.run_adc_and_update_flags(self.registers.register_l);
     }
 
     /// Opcode 0x8E: [ADC A,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=44)
@@ -1168,7 +1194,7 @@ impl Cpu {
     /// register (2 machine cycles).
     fn op_adc_a_hl(&mut self) {
         let operand = self.read_hl();
-        self.op_adc_a(operand);
+        self.run_adc_and_update_flags(operand);
     }
 
     /// Opcode 0x8F: [ADC A,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=43)
@@ -1176,7 +1202,7 @@ impl Cpu {
     /// Adds to the 8-bit A register, the carry flag and the 8-bit register A, and
     /// stores the result back into the A register (1 machine cycle).
     fn op_adc_a_a(&mut self) {
-        self.op_adc_a(self.registers.register_a);
+        self.run_adc_and_update_flags(self.registers.register_a);
     }
 
     /// Opcode 0xC1: [POP BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
@@ -1210,7 +1236,7 @@ impl Cpu {
     /// stores the result back into the A register (2 machine cycles).
     fn op_adc_a_u8(&mut self) {
         let operand = self.fetch_u8();
-        self.op_adc_a(operand);
+        self.run_adc_and_update_flags(operand);
     }
 
     /// Opcode 0xD1: [POP DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
@@ -1384,34 +1410,6 @@ impl Cpu {
         if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
             self.status_flags |= STATUS_FLAG_C;
         }
-    }
-}
-
-impl Cpu {
-    fn op_adc_a(&mut self, operand: u8) {
-        let carry: u16 = if (self.status_flags & STATUS_FLAG_C) != 0 {
-            1
-        } else {
-            0
-        };
-
-        let result: u16 = (self.registers.register_a as u16) + (operand as u16) + carry;
-
-        self.status_flags = 0;
-
-        if (result & 0xFF) == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
-        }
-
-        if ((self.registers.register_a & 0xF) + (operand & 0xF) + (carry as u8)) > 0xF {
-            self.status_flags |= STATUS_FLAG_H;
-        }
-
-        if result > 0xFF {
-            self.status_flags |= STATUS_FLAG_C;
-        }
-
-        self.registers.register_a = (result & 0xFF) as u8;
     }
 }
 
