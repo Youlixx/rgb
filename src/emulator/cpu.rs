@@ -65,7 +65,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_dec_a,       // 0x3D : DEC A
     Cpu::op_ld_a_u8,     // 0x3E : LD A,d8
     Cpu::op_ccf,         // 0x3F : CCF
-    Cpu::op_nop,         // 0x40 : LD B,B
+    Cpu::op_ld_b_b,      // 0x40 : LD B,B
     Cpu::op_ld_b_c,      // 0x41 : LD B,C
     Cpu::op_ld_b_d,      // 0x42 : LD B,D
     Cpu::op_ld_b_e,      // 0x43 : LD B,E
@@ -74,7 +74,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_b_hl,     // 0x46 : LD B,(HL)
     Cpu::op_ld_b_a,      // 0x47 : LD B,A
     Cpu::op_ld_c_b,      // 0x48 : LD C,B
-    Cpu::op_nop,         // 0x49 : LD C,C
+    Cpu::op_ld_c_c,      // 0x49 : LD C,C
     Cpu::op_ld_c_d,      // 0x4A : LD C,D
     Cpu::op_ld_c_e,      // 0x4B : LD C,E
     Cpu::op_ld_c_h,      // 0x4C : LD C,H
@@ -83,7 +83,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_c_a,      // 0x4F : LD C,A
     Cpu::op_ld_d_b,      // 0x50 : LD D,B
     Cpu::op_ld_d_c,      // 0x51 : LD D,C
-    Cpu::op_nop,         // 0x52 : LD D,D
+    Cpu::op_ld_d_d,      // 0x52 : LD D,D
     Cpu::op_ld_d_e,      // 0x53 : LD D,E
     Cpu::op_ld_d_h,      // 0x54 : LD D,H
     Cpu::op_ld_d_l,      // 0x55 : LD D,L
@@ -92,7 +92,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_e_b,      // 0x58 : LD E,B
     Cpu::op_ld_e_c,      // 0x59 : LD E,C
     Cpu::op_ld_e_d,      // 0x5A : LD E,D
-    Cpu::op_nop,         // 0x5B : LD E,E
+    Cpu::op_ld_e_e,      // 0x5B : LD E,E
     Cpu::op_ld_e_h,      // 0x5C : LD E,H
     Cpu::op_ld_e_l,      // 0x5D : LD E,L
     Cpu::op_ld_e_hl,     // 0x5E : LD E,(HL)
@@ -101,7 +101,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_h_c,      // 0x61 : LD H,C
     Cpu::op_ld_h_d,      // 0x62 : LD H,D
     Cpu::op_ld_h_e,      // 0x63 : LD H,E
-    Cpu::op_nop,         // 0x64 : LD H,H
+    Cpu::op_ld_h_h,      // 0x64 : LD H,H
     Cpu::op_ld_h_l,      // 0x65 : LD H,L
     Cpu::op_ld_h_hl,     // 0x66 : LD H,(HL)
     Cpu::op_ld_h_a,      // 0x67 : LD H,A
@@ -110,7 +110,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_l_d,      // 0x6A : LD L,D
     Cpu::op_ld_l_e,      // 0x6B : LD L,E
     Cpu::op_ld_l_h,      // 0x6C : LD L,H
-    Cpu::op_nop,         // 0x6D : LD L,L
+    Cpu::op_ld_l_l,      // 0x6D : LD L,L
     Cpu::op_ld_l_hl,     // 0x6E : LD L,(HL)
     Cpu::op_ld_l_a,      // 0x6F : LD L,A
     Cpu::op_ld_hl_b,     // 0x70 : LD (HL),B
@@ -128,7 +128,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_a_h,      // 0x7C : LD A,H
     Cpu::op_ld_a_l,      // 0x7D : LD A,L
     Cpu::op_ld_a_hl,     // 0x7E : LD A,(HL)
-    Cpu::op_nop,         // 0x7F : LD A,A
+    Cpu::op_ld_a_a,      // 0x7F : LD A,A
     Cpu::op_add_a_b,     // 0x80 : ADD A,B
     Cpu::op_add_a_c,     // 0x81 : ADD A,C
     Cpu::op_add_a_d,     // 0x82 : ADD A,D
@@ -343,11 +343,11 @@ impl Cpu {
         self.memory.read(self.registers.hl())
     }
 
-    fn op_nop(&mut self) {}
-
-    fn op_halt(&mut self) {
-        self.op_placeholder();
+    fn write_hl(&mut self, value: u8) {
+        self.memory.write(self.registers.hl(), value);
     }
+
+    fn op_nop(&mut self) {}
 
     fn op_placeholder(&mut self) {
         panic!("Opcode not implemented!")
@@ -434,6 +434,452 @@ impl Cpu {
     fn op_ld_sp_u16(&mut self) {
         self.stack_pointer = self.fetch_u16();
     }
+
+    /// Opcode 0x40: [LD B,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register B, data from the 8-bit register B (1 machine cycle).
+    fn op_ld_b_b(&mut self) {}
+
+    /// Opcode 0x41: [LD B,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register B, data from the 8-bit register C (1 machine cycle).
+    fn op_ld_b_c(&mut self) {
+        self.registers.register_b = self.registers.register_c;
+    }
+
+    /// Opcode 0x42: [LD B,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register B, data from the 8-bit register D (1 machine cycle).
+    fn op_ld_b_d(&mut self) {
+        self.registers.register_b = self.registers.register_d;
+    }
+
+    /// Opcode 0x43: [LD B,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register B, data from the 8-bit register E (1 machine cycle).
+    fn op_ld_b_e(&mut self) {
+        self.registers.register_b = self.registers.register_e;
+    }
+
+    /// Opcode 0x44: [LD B,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register B, data from the 8-bit register H (1 machine cycle).
+    fn op_ld_b_h(&mut self) {
+        self.registers.register_b = self.registers.register_h;
+    }
+
+    /// Opcode 0x45: [LD B,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register B, data from the 8-bit register L (1 machine cycle).
+    fn op_ld_b_l(&mut self) {
+        self.registers.register_b = self.registers.register_l;
+    }
+
+    /// Opcode 0x46: [LD B,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=17)
+    ///
+    /// Load to the 8-bit register B, data from the absolute address specified by the
+    /// 16-bit register HL (2 machine cycle).
+    fn op_ld_b_hl(&mut self) {
+        self.registers.register_b = self.read_hl();
+    }
+
+    /// Opcode 0x47: [LD B,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register B, data from the 8-bit register A (1 machine cycle).
+    fn op_ld_b_a(&mut self) {
+        self.registers.register_b = self.registers.register_a;
+    }
+
+    /// Opcode 0x48: [LD C,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register C, data from the 8-bit register B (1 machine cycle).
+    fn op_ld_c_b(&mut self) {
+        self.registers.register_c = self.registers.register_b;
+    }
+
+    /// Opcode 0x49: [LD C,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register C, data from the 8-bit register C (1 machine cycle).
+    fn op_ld_c_c(&mut self) {}
+
+    /// Opcode 0x4A: [LD C,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register C, data from the 8-bit register D (1 machine cycle).
+    fn op_ld_c_d(&mut self) {
+        self.registers.register_c = self.registers.register_d;
+    }
+
+    /// Opcode 0x4B: [LD C,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register C, data from the 8-bit register E (1 machine cycle).
+    fn op_ld_c_e(&mut self) {
+        self.registers.register_c = self.registers.register_e;
+    }
+
+    /// Opcode 0x4C: [LD C,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register C, data from the 8-bit register H (1 machine cycle).
+    fn op_ld_c_h(&mut self) {
+        self.registers.register_c = self.registers.register_h;
+    }
+
+    /// Opcode 0x4D: [LD C,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register C, data from the 8-bit register L (1 machine cycle).
+    fn op_ld_c_l(&mut self) {
+        self.registers.register_c = self.registers.register_l;
+    }
+
+    /// Opcode 0x4E: [LD C,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=17)
+    ///
+    /// Load to the 8-bit register C, data from the absolute address specified by the
+    /// 16-bit register HL (2 machine cycle).
+    fn op_ld_c_hl(&mut self) {
+        self.registers.register_c = self.read_hl();
+    }
+
+    /// Opcode 0x4F: [LD C,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register C, data from the 8-bit register A (1 machine cycle).
+    fn op_ld_c_a(&mut self) {
+        self.registers.register_c = self.registers.register_a;
+    }
+
+    /// Opcode 0x50: [LD D,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register D, data from the 8-bit register B (1 machine cycle).
+    fn op_ld_d_b(&mut self) {
+        self.registers.register_d = self.registers.register_b;
+    }
+
+    /// Opcode 0x51: [LD D,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register D, data from the 8-bit register C (1 machine cycle).
+    fn op_ld_d_c(&mut self) {
+        self.registers.register_d = self.registers.register_c;
+    }
+
+    /// Opcode 0x52: [LD D,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register D, data from the 8-bit register D (1 machine cycle).
+    fn op_ld_d_d(&mut self) {}
+
+    /// Opcode 0x53: [LD D,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register D, data from the 8-bit register E (1 machine cycle).
+    fn op_ld_d_e(&mut self) {
+        self.registers.register_d = self.registers.register_e;
+    }
+
+    /// Opcode 0x54: [LD D,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register D, data from the 8-bit register H (1 machine cycle).
+    fn op_ld_d_h(&mut self) {
+        self.registers.register_d = self.registers.register_h;
+    }
+
+    /// Opcode 0x55: [LD D,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register D, data from the 8-bit register L (1 machine cycle).
+    fn op_ld_d_l(&mut self) {
+        self.registers.register_d = self.registers.register_l;
+    }
+
+    /// Opcode 0x56: [LD D,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=17)
+    ///
+    /// Load to the 8-bit register D, data from the absolute address specified by the
+    /// 16-bit register HL (2 machine cycle).
+    fn op_ld_d_hl(&mut self) {
+        self.registers.register_d = self.read_hl();
+    }
+
+    /// Opcode 0x57: [LD D,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register D, data from the 8-bit register A (1 machine cycle).
+    fn op_ld_d_a(&mut self) {
+        self.registers.register_d = self.registers.register_a;
+    }
+
+    /// Opcode 0x58: [LD E,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register E, data from the 8-bit register B (1 machine cycle).
+    fn op_ld_e_b(&mut self) {
+        self.registers.register_e = self.registers.register_b;
+    }
+
+    /// Opcode 0x59: [LD E,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register E, data from the 8-bit register C (1 machine cycle).
+    fn op_ld_e_c(&mut self) {
+        self.registers.register_e = self.registers.register_c;
+    }
+
+    /// Opcode 0x5A: [LD E,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register E, data from the 8-bit register D (1 machine cycle).
+    fn op_ld_e_d(&mut self) {
+        self.registers.register_e = self.registers.register_d;
+    }
+
+    /// Opcode 0x5B: [LD E,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register E, data from the 8-bit register E (1 machine cycle).
+    fn op_ld_e_e(&mut self) {}
+
+    /// Opcode 0x5C: [LD E,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register E, data from the 8-bit register H (1 machine cycle).
+    fn op_ld_e_h(&mut self) {
+        self.registers.register_e = self.registers.register_h;
+    }
+
+    /// Opcode 0x5D: [LD E,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register E, data from the 8-bit register L (1 machine cycle).
+    fn op_ld_e_l(&mut self) {
+        self.registers.register_e = self.registers.register_l;
+    }
+
+    /// Opcode 0x5E: [LD E,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=17)
+    ///
+    /// Load to the 8-bit register E, data from the absolute address specified by the
+    /// 16-bit register HL (2 machine cycle).
+    fn op_ld_e_hl(&mut self) {
+        self.registers.register_e = self.read_hl();
+    }
+
+    /// Opcode 0x5F: [LD E,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register E, data from the 8-bit register A (1 machine cycle).
+    fn op_ld_e_a(&mut self) {
+        self.registers.register_e = self.registers.register_a;
+    }
+
+    /// Opcode 0x60: [LD H,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register H, data from the 8-bit register B (1 machine cycle).
+    fn op_ld_h_b(&mut self) {
+        self.registers.register_h = self.registers.register_b;
+    }
+
+    /// Opcode 0x61: [LD H,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register H, data from the 8-bit register C (1 machine cycle).
+    fn op_ld_h_c(&mut self) {
+        self.registers.register_h = self.registers.register_c;
+    }
+
+    /// Opcode 0x62: [LD H,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register H, data from the 8-bit register D (1 machine cycle).
+    fn op_ld_h_d(&mut self) {
+        self.registers.register_h = self.registers.register_d;
+    }
+
+    /// Opcode 0x63: [LD H,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register H, data from the 8-bit register E (1 machine cycle).
+    fn op_ld_h_e(&mut self) {
+        self.registers.register_h = self.registers.register_e;
+    }
+
+    /// Opcode 0x64: [LD H,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register H, data from the 8-bit register H (1 machine cycle).
+    fn op_ld_h_h(&mut self) {}
+
+    /// Opcode 0x65: [LD H,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register H, data from the 8-bit register L (1 machine cycle).
+    fn op_ld_h_l(&mut self) {
+        self.registers.register_h = self.registers.register_l;
+    }
+
+    /// Opcode 0x66: [LD H,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=17)
+    ///
+    /// Load to the 8-bit register H, data from the absolute address specified by the
+    /// 16-bit register HL (2 machine cycle).
+    fn op_ld_h_hl(&mut self) {
+        self.registers.register_h = self.read_hl();
+    }
+
+    /// Opcode 0x67: [LD H,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register H, data from the 8-bit register A (1 machine cycle).
+    fn op_ld_h_a(&mut self) {
+        self.registers.register_h = self.registers.register_a;
+    }
+
+    /// Opcode 0x68: [LD L,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register L, data from the 8-bit register B (1 machine cycle).
+    fn op_ld_l_b(&mut self) {
+        self.registers.register_l = self.registers.register_b;
+    }
+
+    /// Opcode 0x69: [LD L,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register L, data from the 8-bit register C (1 machine cycle).
+    fn op_ld_l_c(&mut self) {
+        self.registers.register_l = self.registers.register_c;
+    }
+
+    /// Opcode 0x6A: [LD L,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register L, data from the 8-bit register D (1 machine cycle).
+    fn op_ld_l_d(&mut self) {
+        self.registers.register_l = self.registers.register_d;
+    }
+
+    /// Opcode 0x6B: [LD L,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register L, data from the 8-bit register E (1 machine cycle).
+    fn op_ld_l_e(&mut self) {
+        self.registers.register_l = self.registers.register_e;
+    }
+
+    /// Opcode 0x6C: [LD L,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register L, data from the 8-bit register H (1 machine cycle).
+    fn op_ld_l_h(&mut self) {
+        self.registers.register_l = self.registers.register_h;
+    }
+
+    /// Opcode 0x6D: [LD L,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register L, data from the 8-bit register L (1 machine cycle).
+    fn op_ld_l_l(&mut self) {}
+
+    /// Opcode 0x6E: [LD L,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=17)
+    ///
+    /// Load to the 8-bit register L, data from the absolute address specified by the
+    /// 16-bit register HL (2 machine cycle).
+    fn op_ld_l_hl(&mut self) {
+        self.registers.register_l = self.read_hl();
+    }
+
+    /// Opcode 0x6F: [LD L,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register L, data from the 8-bit register A (1 machine cycle).
+    fn op_ld_l_a(&mut self) {
+        self.registers.register_l = self.registers.register_a;
+    }
+
+    /// Opcode 0x70: [LD (HL),B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the absolute address specified by the 16-bit register HL, data from the
+    /// 8-bit register B (2 machine cycles).
+    fn op_ld_hl_b(&mut self) {
+        self.write_hl(self.registers.register_b);
+    }
+
+    /// Opcode 0x71: [LD (HL),C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the absolute address specified by the 16-bit register HL, data from the
+    /// 8-bit register C (2 machine cycles).
+    fn op_ld_hl_c(&mut self) {
+        self.write_hl(self.registers.register_c);
+    }
+
+    /// Opcode 0x72: [LD (HL),D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the absolute address specified by the 16-bit register HL, data from the
+    /// 8-bit register D (2 machine cycles).
+    fn op_ld_hl_d(&mut self) {
+        self.write_hl(self.registers.register_d);
+    }
+
+    /// Opcode 0x73: [LD (HL),E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the absolute address specified by the 16-bit register HL, data from the
+    /// 8-bit register E (2 machine cycles).
+    fn op_ld_hl_e(&mut self) {
+        self.write_hl(self.registers.register_e);
+    }
+
+    /// Opcode 0x74: [LD (HL),H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the absolute address specified by the 16-bit register HL, data from the
+    /// 8-bit register H (2 machine cycles).
+    fn op_ld_hl_h(&mut self) {
+        self.write_hl(self.registers.register_h);
+    }
+
+    /// Opcode 0x75: [LD (HL),L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the absolute address specified by the 16-bit register HL, data from the
+    /// 8-bit register L (2 machine cycles).
+    fn op_ld_hl_l(&mut self) {
+        self.write_hl(self.registers.register_l);
+    }
+
+    /// Opcode 0x75: [HALT](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=118)
+    fn op_halt(&mut self) {
+        panic!("Opcode not implemented!");
+    }
+
+    /// Opcode 0x77: [LD (HL),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the absolute address specified by the 16-bit register HL, data from the
+    /// 8-bit register A (2 machine cycles).
+    fn op_ld_hl_a(&mut self) {
+        self.write_hl(self.registers.register_a);
+    }
+
+    /// Opcode 0x78: [LD A,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register A, data from the 8-bit register B (1 machine cycle).
+    fn op_ld_a_b(&mut self) {
+        self.registers.register_a = self.registers.register_b;
+    }
+
+    /// Opcode 0x79: [LD A,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register A, data from the 8-bit register C (1 machine cycle).
+    fn op_ld_a_c(&mut self) {
+        self.registers.register_a = self.registers.register_c;
+    }
+
+    /// Opcode 0x7A: [LD A,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register A, data from the 8-bit register D (1 machine cycle).
+    fn op_ld_a_d(&mut self) {
+        self.registers.register_a = self.registers.register_d;
+    }
+
+    /// Opcode 0x7B: [LD A,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register A, data from the 8-bit register E (1 machine cycle).
+    fn op_ld_a_e(&mut self) {
+        self.registers.register_a = self.registers.register_e;
+    }
+
+    /// Opcode 0x7C: [LD A,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register A, data from the 8-bit register H (1 machine cycle).
+    fn op_ld_a_h(&mut self) {
+        self.registers.register_a = self.registers.register_h;
+    }
+
+    /// Opcode 0x7D: [LD A,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register A, data from the 8-bit register L (1 machine cycle).
+    fn op_ld_a_l(&mut self) {
+        self.registers.register_a = self.registers.register_l;
+    }
+
+    /// Opcode 0x7E: [LD A,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=17)
+    ///
+    /// Load to the 8-bit register A, data from the absolute address specified by the
+    /// 16-bit register HL (2 machine cycle).
+    fn op_ld_a_hl(&mut self) {
+        self.registers.register_a = self.read_hl();
+    }
+
+    /// Opcode 0x7F: [LD A,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
+    ///
+    /// Load to the 8-bit register A, data from the 8-bit register A (1 machine cycle).
+    fn op_ld_a_a(&mut self) {}
 
     /// Opcode 0xC1: [POP BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
     ///
@@ -559,240 +1005,6 @@ impl Cpu {
 
     fn op_ld_l_u8(&mut self) {
         self.registers.register_l = self.fetch_u8();
-    }
-}
-
-impl Cpu {
-    fn op_ld_a_b(&mut self) {
-        self.registers.register_a = self.registers.register_b;
-    }
-
-    fn op_ld_a_c(&mut self) {
-        self.registers.register_a = self.registers.register_c;
-    }
-
-    fn op_ld_a_d(&mut self) {
-        self.registers.register_a = self.registers.register_d;
-    }
-
-    fn op_ld_a_e(&mut self) {
-        self.registers.register_a = self.registers.register_e;
-    }
-
-    fn op_ld_a_h(&mut self) {
-        self.registers.register_a = self.registers.register_h;
-    }
-
-    fn op_ld_a_l(&mut self) {
-        self.registers.register_a = self.registers.register_l;
-    }
-
-    fn op_ld_b_a(&mut self) {
-        self.registers.register_b = self.registers.register_a;
-    }
-
-    fn op_ld_b_c(&mut self) {
-        self.registers.register_b = self.registers.register_c;
-    }
-
-    fn op_ld_b_d(&mut self) {
-        self.registers.register_b = self.registers.register_d;
-    }
-
-    fn op_ld_b_e(&mut self) {
-        self.registers.register_b = self.registers.register_e;
-    }
-
-    fn op_ld_b_h(&mut self) {
-        self.registers.register_b = self.registers.register_h;
-    }
-
-    fn op_ld_b_l(&mut self) {
-        self.registers.register_b = self.registers.register_l;
-    }
-
-    fn op_ld_c_a(&mut self) {
-        self.registers.register_c = self.registers.register_a;
-    }
-
-    fn op_ld_c_b(&mut self) {
-        self.registers.register_c = self.registers.register_b;
-    }
-
-    fn op_ld_c_d(&mut self) {
-        self.registers.register_c = self.registers.register_d;
-    }
-
-    fn op_ld_c_e(&mut self) {
-        self.registers.register_c = self.registers.register_e;
-    }
-
-    fn op_ld_c_h(&mut self) {
-        self.registers.register_c = self.registers.register_h;
-    }
-
-    fn op_ld_c_l(&mut self) {
-        self.registers.register_c = self.registers.register_l;
-    }
-
-    fn op_ld_d_a(&mut self) {
-        self.registers.register_d = self.registers.register_a;
-    }
-
-    fn op_ld_d_b(&mut self) {
-        self.registers.register_d = self.registers.register_b;
-    }
-
-    fn op_ld_d_c(&mut self) {
-        self.registers.register_d = self.registers.register_c;
-    }
-
-    fn op_ld_d_e(&mut self) {
-        self.registers.register_d = self.registers.register_e;
-    }
-
-    fn op_ld_d_h(&mut self) {
-        self.registers.register_d = self.registers.register_h;
-    }
-
-    fn op_ld_d_l(&mut self) {
-        self.registers.register_d = self.registers.register_l;
-    }
-
-    fn op_ld_e_a(&mut self) {
-        self.registers.register_e = self.registers.register_a;
-    }
-
-    fn op_ld_e_b(&mut self) {
-        self.registers.register_e = self.registers.register_b;
-    }
-
-    fn op_ld_e_c(&mut self) {
-        self.registers.register_e = self.registers.register_c;
-    }
-
-    fn op_ld_e_d(&mut self) {
-        self.registers.register_e = self.registers.register_d;
-    }
-
-    fn op_ld_e_h(&mut self) {
-        self.registers.register_e = self.registers.register_h;
-    }
-
-    fn op_ld_e_l(&mut self) {
-        self.registers.register_e = self.registers.register_l;
-    }
-
-    fn op_ld_h_a(&mut self) {
-        self.registers.register_h = self.registers.register_a;
-    }
-
-    fn op_ld_h_b(&mut self) {
-        self.registers.register_h = self.registers.register_b;
-    }
-
-    fn op_ld_h_c(&mut self) {
-        self.registers.register_h = self.registers.register_c;
-    }
-
-    fn op_ld_h_d(&mut self) {
-        self.registers.register_h = self.registers.register_d;
-    }
-
-    fn op_ld_h_e(&mut self) {
-        self.registers.register_h = self.registers.register_e;
-    }
-
-    fn op_ld_h_l(&mut self) {
-        self.registers.register_h = self.registers.register_l;
-    }
-
-    fn op_ld_l_a(&mut self) {
-        self.registers.register_l = self.registers.register_a;
-    }
-
-    fn op_ld_l_b(&mut self) {
-        self.registers.register_l = self.registers.register_b;
-    }
-
-    fn op_ld_l_c(&mut self) {
-        self.registers.register_l = self.registers.register_c;
-    }
-
-    fn op_ld_l_d(&mut self) {
-        self.registers.register_l = self.registers.register_d;
-    }
-
-    fn op_ld_l_e(&mut self) {
-        self.registers.register_l = self.registers.register_e;
-    }
-
-    fn op_ld_l_h(&mut self) {
-        self.registers.register_l = self.registers.register_h;
-    }
-}
-
-impl Cpu {
-    fn op_ld_hl(&mut self, value: u8) {
-        self.memory.write(self.registers.hl(), value);
-    }
-
-    fn op_ld_hl_a(&mut self) {
-        self.op_ld_hl(self.registers.register_a);
-    }
-
-    fn op_ld_hl_b(&mut self) {
-        self.op_ld_hl(self.registers.register_b);
-    }
-
-    fn op_ld_hl_c(&mut self) {
-        self.op_ld_hl(self.registers.register_c);
-    }
-
-    fn op_ld_hl_d(&mut self) {
-        self.op_ld_hl(self.registers.register_d);
-    }
-
-    fn op_ld_hl_e(&mut self) {
-        self.op_ld_hl(self.registers.register_e);
-    }
-
-    fn op_ld_hl_h(&mut self) {
-        self.op_ld_hl(self.registers.register_h);
-    }
-
-    fn op_ld_hl_l(&mut self) {
-        self.op_ld_hl(self.registers.register_l);
-    }
-}
-
-impl Cpu {
-    fn op_ld_a_hl(&mut self) {
-        self.registers.register_a = self.read_hl();
-    }
-
-    fn op_ld_b_hl(&mut self) {
-        self.registers.register_b = self.read_hl();
-    }
-
-    fn op_ld_c_hl(&mut self) {
-        self.registers.register_c = self.read_hl();
-    }
-
-    fn op_ld_d_hl(&mut self) {
-        self.registers.register_d = self.read_hl();
-    }
-
-    fn op_ld_e_hl(&mut self) {
-        self.registers.register_e = self.read_hl();
-    }
-
-    fn op_ld_h_hl(&mut self) {
-        self.registers.register_h = self.read_hl();
-    }
-
-    fn op_ld_l_hl(&mut self) {
-        self.registers.register_l = self.read_hl();
     }
 }
 
