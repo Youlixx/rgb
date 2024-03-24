@@ -422,43 +422,8 @@ impl Cpu {
         self.registers.register_l = self.memory.read(self.registers.hl());
     }
 
-    fn op_load_hl_b(&mut self) {
-        self.memory
-            .write(self.registers.hl(), self.registers.register_b);
-    }
-
-    fn op_load_hl_c(&mut self) {
-        self.memory
-            .write(self.registers.hl(), self.registers.register_c);
-    }
-
-    fn op_load_hl_d(&mut self) {
-        self.memory
-            .write(self.registers.hl(), self.registers.register_d);
-    }
-
-    fn op_load_hl_e(&mut self) {
-        self.memory
-            .write(self.registers.hl(), self.registers.register_e);
-    }
-
-    fn op_load_hl_h(&mut self) {
-        self.memory
-            .write(self.registers.hl(), self.registers.register_h);
-    }
-
-    fn op_load_hl_l(&mut self) {
-        self.memory
-            .write(self.registers.hl(), self.registers.register_l);
-    }
-
     fn op_halt(&mut self) {
         self.op_placeholder();
-    }
-
-    fn op_load_hl_a(&mut self) {
-        self.memory
-            .write(self.registers.hl(), self.registers.register_a);
     }
 
     fn op_load_a_hl(&mut self) {
@@ -543,4 +508,25 @@ impl Cpu {
     op_load_r_r!(a, h);
     op_load_r_r!(a, l);
     op_load_r_r!(a, a);
+}
+
+macro_rules! op_load_hl_r {
+    ($x:tt) => {
+        paste! {
+            fn [< op_load_hl _ $x >] (&mut self) {
+                self.memory
+                    .write(self.registers.hl(), self.registers.[< register_ $x >]);
+            }
+        }
+    };
+}
+
+impl Cpu {
+    op_load_hl_r!(b);
+    op_load_hl_r!(c);
+    op_load_hl_r!(d);
+    op_load_hl_r!(e);
+    op_load_hl_r!(h);
+    op_load_hl_r!(l);
+    op_load_hl_r!(a);
 }
