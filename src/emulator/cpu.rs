@@ -962,7 +962,8 @@ impl Cpu {
     /// machine cycles).
     fn op_inc_hl_ind(&mut self) {
         let address = self.registers.hl();
-        let value = self.run_inc_u8_and_update_flags(self.memory.read(address));
+        let value = self.memory.read(address);
+        let value = self.run_inc_u8_and_update_flags(value);
         self.memory.write(address, value);
     }
 
@@ -972,7 +973,8 @@ impl Cpu {
     /// machine cycles).
     fn op_dec_hl_ind(&mut self) {
         let address = self.registers.hl();
-        let value = self.run_dec_u8_and_update_flags(self.memory.read(address));
+        let value = self.memory.read(address);
+        let value = self.run_dec_u8_and_update_flags(value);
         self.memory.write(address, value);
     }
 
