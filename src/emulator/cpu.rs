@@ -536,6 +536,23 @@ impl Cpu {
 
         result
     }
+
+    fn run_dec_u8_and_update_flags(&mut self, operand: u8) -> u8 {
+        let result = operand.wrapping_sub(1);
+
+        self.status_flags &= !(STATUS_FLAG_Z | STATUS_FLAG_H);
+        self.status_flags |= STATUS_FLAG_N;
+
+        if result == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        if (result & 0xF) == 0 {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        result
+    }
 }
 
 /// Gameboy SM63 opcode implementations
@@ -569,6 +586,13 @@ impl Cpu {
     /// Increments data in the 8-bit register B (1 machine cycles).
     fn op_inc_b(&mut self) {
         self.registers.register_b = self.run_inc_u8_and_update_flags(self.registers.register_b);
+    }
+
+    /// Opcode 0x05: [DEC B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
+    ///
+    /// Decrements data in the 8-bit register B (1 machine cycles).
+    fn op_dec_b(&mut self) {
+        self.registers.register_b = self.run_dec_u8_and_update_flags(self.registers.register_b);
     }
 
     /// Opcode 0x06: [LD B,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
@@ -607,6 +631,13 @@ impl Cpu {
         self.registers.register_c = self.run_inc_u8_and_update_flags(self.registers.register_c);
     }
 
+    /// Opcode 0x0D: [DEC C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
+    ///
+    /// Decrements data in the 8-bit register C (1 machine cycles).
+    fn op_dec_c(&mut self) {
+        self.registers.register_c = self.run_dec_u8_and_update_flags(self.registers.register_c);
+    }
+
     /// Opcode 0x0E: [LD C,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
     ///
     /// Load to the 8-bit register C, the immediate data following the opcode (2
@@ -640,6 +671,13 @@ impl Cpu {
         self.registers.register_d = self.run_inc_u8_and_update_flags(self.registers.register_d);
     }
 
+    /// Opcode 0x15: [DEC D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
+    ///
+    /// Decrements data in the 8-bit register D (1 machine cycles).
+    fn op_dec_d(&mut self) {
+        self.registers.register_d = self.run_dec_u8_and_update_flags(self.registers.register_d);
+    }
+
     /// Opcode 0x16: [LD D,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
     ///
     /// Load to the 8-bit register D, the immediate data following the opcode (2
@@ -661,6 +699,13 @@ impl Cpu {
     /// Increments data in the 8-bit register E (1 machine cycles).
     fn op_inc_e(&mut self) {
         self.registers.register_e = self.run_inc_u8_and_update_flags(self.registers.register_e);
+    }
+
+    /// Opcode 0x1D: [DEC E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
+    ///
+    /// Decrements data in the 8-bit register E (1 machine cycles).
+    fn op_dec_e(&mut self) {
+        self.registers.register_e = self.run_dec_u8_and_update_flags(self.registers.register_e);
     }
 
     /// Opcode 0x1E: [LD E,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
@@ -698,6 +743,13 @@ impl Cpu {
         self.registers.register_h = self.run_inc_u8_and_update_flags(self.registers.register_h);
     }
 
+    /// Opcode 0x25: [DEC H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
+    ///
+    /// Decrements data in the 8-bit register H (1 machine cycles).
+    fn op_dec_h(&mut self) {
+        self.registers.register_h = self.run_dec_u8_and_update_flags(self.registers.register_h);
+    }
+
     /// Opcode 0x26: [LD H,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
     ///
     /// Load to the 8-bit register H, the immediate data following the opcode (2
@@ -722,6 +774,13 @@ impl Cpu {
     /// Increments data in the 8-bit register L (1 machine cycles).
     fn op_inc_l(&mut self) {
         self.registers.register_l = self.run_inc_u8_and_update_flags(self.registers.register_l);
+    }
+
+    /// Opcode 0x2D: [DEC L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
+    ///
+    /// Decrements data in the 8-bit register L (1 machine cycles).
+    fn op_dec_l(&mut self) {
+        self.registers.register_l = self.run_dec_u8_and_update_flags(self.registers.register_l);
     }
 
     /// Opcode 0x2E: [LD L,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
@@ -761,6 +820,16 @@ impl Cpu {
         self.memory.write(address, value);
     }
 
+    /// Opcode 0x35: [DEC (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=58)
+    ///
+    /// Decrements data at the absolute address specified by the 16-bit register HL (3
+    /// machine cycles).
+    fn op_dec_hl_ind(&mut self) {
+        let address = self.registers.hl();
+        let value = self.run_dec_u8_and_update_flags(self.memory.read(address));
+        self.memory.write(address, value);
+    }
+
     /// Opcode 0x36: [LD (HL),d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=19)
     ///
     /// Load to the absolute address specified by the 16-bit register HL, the immediate
@@ -786,6 +855,13 @@ impl Cpu {
     /// Increments data in the 8-bit register A (1 machine cycles).
     fn op_inc_a(&mut self) {
         self.registers.register_a = self.run_inc_u8_and_update_flags(self.registers.register_a);
+    }
+
+    /// Opcode 0x3D: [DEC A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=57)
+    ///
+    /// Decrements data in the 8-bit register A (1 machine cycles).
+    fn op_dec_a(&mut self) {
+        self.registers.register_a = self.run_dec_u8_and_update_flags(self.registers.register_a);
     }
 
     /// Opcode 0x3E: [LD A,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=16)
@@ -2061,59 +2137,6 @@ impl Cpu {
 
     fn op_inc_sp(&mut self) {
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
-    }
-}
-
-impl Cpu {
-    fn op_dec(&mut self, operand: u8) -> u8 {
-        let result = operand.wrapping_sub(1);
-
-        self.status_flags &= !(STATUS_FLAG_Z | STATUS_FLAG_H);
-        self.status_flags |= STATUS_FLAG_N;
-
-        if result == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
-        }
-
-        if (result & 0xF) == 0 {
-            self.status_flags |= STATUS_FLAG_H;
-        }
-
-        result
-    }
-
-    fn op_dec_a(&mut self) {
-        self.registers.register_a = self.op_dec(self.registers.register_a);
-    }
-
-    fn op_dec_b(&mut self) {
-        self.registers.register_b = self.op_dec(self.registers.register_b);
-    }
-
-    fn op_dec_c(&mut self) {
-        self.registers.register_c = self.op_dec(self.registers.register_c);
-    }
-
-    fn op_dec_d(&mut self) {
-        self.registers.register_d = self.op_dec(self.registers.register_d);
-    }
-
-    fn op_dec_e(&mut self) {
-        self.registers.register_e = self.op_dec(self.registers.register_e);
-    }
-
-    fn op_dec_h(&mut self) {
-        self.registers.register_h = self.op_dec(self.registers.register_h);
-    }
-
-    fn op_dec_l(&mut self) {
-        self.registers.register_l = self.op_dec(self.registers.register_l);
-    }
-
-    fn op_dec_hl_ind(&mut self) {
-        let address = self.registers.hl();
-        let value = self.op_dec(self.memory.read(address));
-        self.memory.write(address, value);
     }
 }
 
