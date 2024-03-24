@@ -256,7 +256,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder,   // 0xFB : EI
     Cpu::op_placeholder,   // 0xFC : undefined
     Cpu::op_placeholder,   // 0xFD : undefined
-    Cpu::op_placeholder,   // 0xFE : CP d8
+    Cpu::op_cp_a_u8,       // 0xFE : CP d8
     Cpu::op_placeholder,   // 0xFF : RST 38H
 ];
 
@@ -920,39 +920,8 @@ impl Cpu {
     }
 }
 
-macro_rules! op_cp_a_r {
-    ($x:tt) => {
-        paste! {
-            fn [< op_cp_a_ $x >] (&mut self) {
-                self.status_flags = STATUS_FLAG_N;
-
-                if self.registers.register_a == self.registers.[< register_ $x >] {
-                    self.status_flags |= STATUS_FLAG_Z;
-                }
-
-                if (self.registers.register_a & 0xF) < (self.registers.[< register_ $x >] & 0xF) {
-                    self.status_flags |= STATUS_FLAG_H;
-                }
-
-                if self.registers.register_a < self.registers.[< register_ $x >] {
-                    self.status_flags |= STATUS_FLAG_C;
-                }
-            }
-        }
-    };
-}
-
 impl Cpu {
-    op_cp_a_r!(b);
-    op_cp_a_r!(c);
-    op_cp_a_r!(d);
-    op_cp_a_r!(e);
-    op_cp_a_r!(h);
-    op_cp_a_r!(l);
-    op_cp_a_r!(a);
-
-    fn op_cp_a_hl(&mut self) {
-        let operand = self.memory.read(self.registers.hl());
+    fn op_cp_a(&mut self, operand: u8) {
         self.status_flags = STATUS_FLAG_N;
 
         if self.registers.register_a == operand {
@@ -966,5 +935,42 @@ impl Cpu {
         if self.registers.register_a < operand {
             self.status_flags |= STATUS_FLAG_C;
         }
+    }
+
+    fn op_cp_a_a(&mut self) {
+        self.op_cp_a(self.registers.register_a);
+    }
+
+    fn op_cp_a_b(&mut self) {
+        self.op_cp_a(self.registers.register_b);
+    }
+
+    fn op_cp_a_c(&mut self) {
+        self.op_cp_a(self.registers.register_c);
+    }
+
+    fn op_cp_a_d(&mut self) {
+        self.op_cp_a(self.registers.register_d);
+    }
+
+    fn op_cp_a_e(&mut self) {
+        self.op_cp_a(self.registers.register_e);
+    }
+
+    fn op_cp_a_h(&mut self) {
+        self.op_cp_a(self.registers.register_h);
+    }
+
+    fn op_cp_a_l(&mut self) {
+        self.op_cp_a(self.registers.register_l);
+    }
+
+    fn op_cp_a_hl(&mut self) {
+        self.op_cp_a(self.memory.read(self.registers.hl()));
+    }
+
+    fn op_cp_a_u8(&mut self) {
+        let operand = self.fetch_next_byte();
+        self.op_cp_a(operand);
     }
 }
