@@ -385,6 +385,153 @@ impl Cpu {
     }
 }
 
+/// Gameboy SM63 opcode implementations
+impl Cpu {
+    /// Opcode 0x01: [LD BC,d16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=34)
+    ///
+    /// Load to the 16-bit register BC, the immediate 16-bit data following the opcode
+    /// (3 machine cycles).
+    fn op_ld_bc_u16(&mut self) {
+        let value = self.fetch_u16();
+        self.registers.set_bc(value);
+    }
+
+    /// Opcode 0x08: [LD (a16),SP](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
+    ///
+    /// Load to the absolute address specified by the 16-bit operand following the
+    /// opcode, data from the 16-bit SP register (5 machine cycles).
+    fn op_ld_u16_sp(&mut self) {
+        let address = self.fetch_u16();
+
+        self.memory
+            .write(address, (self.stack_pointer & 0xFF) as u8);
+        self.memory
+            .write(address + 1, (self.stack_pointer >> 8) as u8);
+    }
+
+    /// Opcode 0x11: [LD DE,d16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=34)
+    ///
+    /// Load to the 16-bit register DE, the immediate 16-bit data following the opcode
+    /// (3 machine cycles).
+    fn op_ld_de_u16(&mut self) {
+        let value = self.fetch_u16();
+        self.registers.set_de(value);
+    }
+
+    /// Opcode 0x21: [LD HL,d16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=34)
+    ///
+    /// Load to the 16-bit register HL, the immediate 16-bit data following the opcode
+    /// (3 machine cycles).
+    fn op_ld_hl_u16(&mut self) {
+        let value = self.fetch_u16();
+        self.registers.set_hl(value);
+    }
+
+    /// Opcode 0x31: [LD SP,d16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=34)
+    ///
+    /// Load to the 16-bit register SP, the immediate 16-bit data following the opcode
+    /// (3 machine cycles).
+    fn op_ld_sp_u16(&mut self) {
+        self.stack_pointer = self.fetch_u16();
+    }
+
+    /// Opcode 0xC1: [POP BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
+    ///
+    /// Pops to the 16-bit register BC, data from the stack memory (3 machine cycles).
+    fn op_pop_bc(&mut self) {
+        self.registers.register_c = self.stack_pop_u8();
+        self.registers.register_b = self.stack_pop_u8();
+    }
+
+    /// Opcode 0xC5: [PUSH BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
+    ///
+    /// Push to the stack memory, data from the 16-bit register BC (4 machine cycles).
+    fn op_push_bc(&mut self) {
+        self.stack_push_u8(self.registers.register_b);
+        self.stack_push_u8(self.registers.register_c);
+    }
+
+    /// Opcode 0xD1: [POP DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
+    ///
+    /// Pops to the 16-bit register DE, data from the stack memory (3 machine cycles).
+    fn op_pop_de(&mut self) {
+        self.registers.register_e = self.stack_pop_u8();
+        self.registers.register_d = self.stack_pop_u8();
+    }
+
+    /// Opcode 0xD5: [PUSH DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
+    ///
+    /// Push to the stack memory, data from the 16-bit register DE (4 machine cycles).
+    fn op_push_de(&mut self) {
+        self.stack_push_u8(self.registers.register_d);
+        self.stack_push_u8(self.registers.register_e);
+    }
+
+    /// Opcode 0xE1: [POP HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
+    ///
+    /// Pops to the 16-bit register HL, data from the stack memory (3 machine cycles).
+    fn op_pop_hl(&mut self) {
+        self.registers.register_l = self.stack_pop_u8();
+        self.registers.register_h = self.stack_pop_u8();
+    }
+
+    /// Opcode 0xE5: [PUSH HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
+    ///
+    /// Push to the stack memory, data from the 16-bit register HL (4 machine cycles).
+    fn op_push_hl(&mut self) {
+        self.stack_push_u8(self.registers.register_h);
+        self.stack_push_u8(self.registers.register_l);
+    }
+
+    /// Opcode 0xF1: [POP AF](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
+    ///
+    /// Pops to the 16-bit register AF, data from the stack memory. This instruction
+    /// does not do calculations that affect flags, but POP AF completely replaces the
+    /// F register value, so all flags are changed based on the 8-bit data that is read
+    /// from memory (3 machine cycles).
+    fn op_pop_af(&mut self) {
+        self.status_flags = self.stack_pop_u8();
+        self.registers.register_a = self.stack_pop_u8();
+    }
+
+    /// Opcode 0xF5: [PUSH AF](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
+    ///
+    /// Push to the stack memory, data from the 16-bit register AF (4 machine cycles).
+    fn op_push_af(&mut self) {
+        self.stack_push_u8(self.registers.register_a);
+        self.stack_push_u8(self.status_flags);
+    }
+
+    /// Opcode 0xF8: [LD HL,SP+r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=39)
+    ///
+    /// Load to the HL register, 16-bit data calculated by adding the signed 8-bit
+    /// operand e to the 16-bit value of the SP register (3 machine cycles).
+    fn op_ld_hl_sp_i8(&mut self) {
+        let offset = self.fetch_u8() as i8;
+
+        self.status_flags = 0;
+        self.registers
+            .set_hl((self.stack_pointer as i32).wrapping_add(offset as i32) as u16);
+
+        // TODO: check type convertion...
+        if ((self.stack_pointer & 0x0F) + (offset as u16 & 0x0F)) > 0x0F {
+            self.status_flags |= STATUS_FLAG_H;
+        }
+
+        if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+    }
+
+    /// Opcode 0xF9: [LD SP,HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=36)
+    ///
+    /// Load to the 16-bit SP register, data from the 16-bit HL register (2 machine
+    /// cycles).
+    fn op_ld_sp_hl(&mut self) {
+        self.stack_pointer = self.registers.hl();
+    }
+}
+
 impl Cpu {
     fn op_ld_a_u8(&mut self) {
         self.registers.register_a = self.fetch_u8();
@@ -650,27 +797,6 @@ impl Cpu {
 }
 
 impl Cpu {
-    fn op_ld_bc_u16(&mut self) {
-        let value = self.fetch_u16();
-        self.registers.set_bc(value);
-    }
-
-    fn op_ld_de_u16(&mut self) {
-        let value = self.fetch_u16();
-        self.registers.set_de(value);
-    }
-
-    fn op_ld_hl_u16(&mut self) {
-        let value = self.fetch_u16();
-        self.registers.set_hl(value);
-    }
-
-    fn op_ld_sp_u16(&mut self) {
-        self.stack_pointer = self.fetch_u16();
-    }
-}
-
-impl Cpu {
     fn op_ld_bc_a(&mut self) {
         self.memory
             .write(self.registers.bc(), self.registers.register_a);
@@ -716,82 +842,6 @@ impl Cpu {
     fn op_ld_hl_u8(&mut self) {
         let value = self.fetch_u8();
         self.memory.write(self.registers.hl(), value);
-    }
-
-    fn op_ld_u16_sp(&mut self) {
-        let address = self.fetch_u16();
-
-        self.memory
-            .write(address, (self.stack_pointer & 0xFF) as u8);
-        self.memory
-            .write(address + 1, (self.stack_pointer >> 8) as u8);
-    }
-
-    fn op_ld_sp_hl(&mut self) {
-        self.stack_pointer = self.registers.hl();
-    }
-}
-
-impl Cpu {
-    fn op_pop_af(&mut self) {
-        self.status_flags = self.stack_pop_u8();
-        self.registers.register_a = self.stack_pop_u8();
-    }
-
-    fn op_pop_bc(&mut self) {
-        self.registers.register_c = self.stack_pop_u8();
-        self.registers.register_b = self.stack_pop_u8();
-    }
-
-    fn op_pop_de(&mut self) {
-        self.registers.register_e = self.stack_pop_u8();
-        self.registers.register_d = self.stack_pop_u8();
-    }
-
-    fn op_pop_hl(&mut self) {
-        self.registers.register_l = self.stack_pop_u8();
-        self.registers.register_h = self.stack_pop_u8();
-    }
-}
-
-impl Cpu {
-    fn op_push_af(&mut self) {
-        self.stack_push_u8(self.registers.register_a);
-        self.stack_push_u8(self.status_flags);
-    }
-
-    fn op_push_bc(&mut self) {
-        self.stack_push_u8(self.registers.register_b);
-        self.stack_push_u8(self.registers.register_c);
-    }
-
-    fn op_push_de(&mut self) {
-        self.stack_push_u8(self.registers.register_d);
-        self.stack_push_u8(self.registers.register_e);
-    }
-
-    fn op_push_hl(&mut self) {
-        self.stack_push_u8(self.registers.register_h);
-        self.stack_push_u8(self.registers.register_l);
-    }
-}
-
-impl Cpu {
-    fn op_ld_hl_sp_i8(&mut self) {
-        let offset = self.fetch_u8() as i8;
-
-        self.status_flags = 0;
-        self.registers
-            .set_hl((self.stack_pointer as i32).wrapping_add(offset as i32) as u16);
-
-        // TODO: check type convertion...
-        if ((self.stack_pointer & 0x0F) + (offset as u16 & 0x0F)) > 0x0F {
-            self.status_flags |= STATUS_FLAG_H;
-        }
-
-        if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
-            self.status_flags |= STATUS_FLAG_C;
-        }
     }
 }
 
