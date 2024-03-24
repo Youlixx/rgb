@@ -162,14 +162,14 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_sbc_a_l,       // 0x9D : SBC A,L
     Cpu::op_sbc_a_hl,      // 0x9E : SBC A,(HL)
     Cpu::op_sbc_a_a,       // 0x9F : SBC A,A
-    Cpu::op_placeholder,   // 0xA0 : AND B
-    Cpu::op_placeholder,   // 0xA1 : AND C
-    Cpu::op_placeholder,   // 0xA2 : AND D
-    Cpu::op_placeholder,   // 0xA3 : AND E
-    Cpu::op_placeholder,   // 0xA4 : AND H
-    Cpu::op_placeholder,   // 0xA5 : AND L
-    Cpu::op_placeholder,   // 0xA6 : AND (HL)
-    Cpu::op_placeholder,   // 0xA7 : AND A
+    Cpu::op_and_a_b,       // 0xA0 : AND B
+    Cpu::op_and_a_c,       // 0xA1 : AND C
+    Cpu::op_and_a_d,       // 0xA2 : AND D
+    Cpu::op_and_a_e,       // 0xA3 : AND E
+    Cpu::op_and_a_h,       // 0xA4 : AND H
+    Cpu::op_and_a_l,       // 0xA5 : AND L
+    Cpu::op_and_a_hl,      // 0xA6 : AND (HL)
+    Cpu::op_and_a_a,       // 0xA7 : AND A
     Cpu::op_placeholder,   // 0xA8 : XOR B
     Cpu::op_placeholder,   // 0xA9 : XOR C
     Cpu::op_placeholder,   // 0xAA : XOR D
@@ -774,5 +774,39 @@ impl Cpu {
         }
 
         self.registers.register_a = result;
+    }
+}
+
+macro_rules! op_and_a_r {
+    ($x:tt) => {
+        paste! {
+            fn [< op_and_a_ $x >] (&mut self) {
+                self.registers.register_a &= self.registers.[< register_ $x >];
+                self.status_flags = STATUS_FLAG_H;
+
+                if self.registers.register_a == 0 {
+                    self.status_flags |= STATUS_FLAG_Z;
+                }
+            }
+        }
+    };
+}
+
+impl Cpu {
+    op_and_a_r!(b);
+    op_and_a_r!(c);
+    op_and_a_r!(d);
+    op_and_a_r!(e);
+    op_and_a_r!(h);
+    op_and_a_r!(l);
+    op_and_a_r!(a);
+
+    fn op_and_a_hl(&mut self) {
+        self.registers.register_a &= self.memory.read(self.registers.hl());
+        self.status_flags = STATUS_FLAG_H;
+
+        if self.registers.register_a == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
     }
 }
