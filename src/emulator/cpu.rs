@@ -200,15 +200,15 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_call_nz_a16, // 0xC4 : CALL NZ,a16
     Cpu::op_push_bc,     // 0xC5 : PUSH BC
     Cpu::op_add_a_u8,    // 0xC6 : ADD A,d8
-    Cpu::op_placeholder, // 0xC7 : RST 00H
+    Cpu::op_rst_00h,     // 0xC7 : RST 00H
     Cpu::op_ret_z,       // 0xC8 : RET Z
-    Cpu::op_placeholder, // 0xC9 : RET
+    Cpu::op_ret,         // 0xC9 : RET
     Cpu::op_jp_z_a16,    // 0xCA : JP Z,a16
     Cpu::op_placeholder, // 0xCB : PREFIX CB
     Cpu::op_call_z_a16,  // 0xCC : CALL Z,a16
     Cpu::op_call_a16,    // 0xCD : CALL a16
     Cpu::op_adc_a_u8,    // 0xCE : ADC A,d8
-    Cpu::op_placeholder, // 0xCF : RST 08H
+    Cpu::op_rst_08h,     // 0xCF : RST 08H
     Cpu::op_ret_nc,      // 0xD0 : RET NC
     Cpu::op_pop_de,      // 0xD1 : POP DE
     Cpu::op_jp_nc_a16,   // 0xD2 : JP NC,a16
@@ -216,15 +216,15 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_call_nc_a16, // 0xD4 : CALL NC,a16
     Cpu::op_push_de,     // 0xD5 : PUSH DE
     Cpu::op_sub_a_u8,    // 0xD6 : SUB d8
-    Cpu::op_placeholder, // 0xD7 : RST 10H
+    Cpu::op_rst_10h,     // 0xD7 : RST 10H
     Cpu::op_ret_c,       // 0xD8 : RET C
-    Cpu::op_placeholder, // 0xD9 : RETI
+    Cpu::op_reti,        // 0xD9 : RETI
     Cpu::op_jp_c_a16,    // 0xDA : JP C,a16
     Cpu::op_placeholder, // 0xDB : undefined
     Cpu::op_call_c_a16,  // 0xDC : CALL C,a16
     Cpu::op_placeholder, // 0xDD : undefined
     Cpu::op_sbc_a_u8,    // 0xDE : SBC A,d8
-    Cpu::op_placeholder, // 0xDF : RST 18H
+    Cpu::op_rst_18h,     // 0xDF : RST 18H
     Cpu::op_ldh_a8_a,    // 0xE0 : LDH (a8),A
     Cpu::op_pop_hl,      // 0xE1 : POP HL
     Cpu::op_placeholder, // 0xE2 : LD (C),A
@@ -232,7 +232,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder, // 0xE4 : undefined
     Cpu::op_push_hl,     // 0xE5 : PUSH HL
     Cpu::op_and_a_u8,    // 0xE6 : AND d8
-    Cpu::op_placeholder, // 0xE7 : RST 20H
+    Cpu::op_rst_20h,     // 0xE7 : RST 20H
     Cpu::op_add_sp_r8,   // 0xE8 : ADD SP,r8
     Cpu::op_jp_hl,       // 0xE9 : JP (HL)
     Cpu::op_ld_a16_a,    // 0xEA : LD (a16),A
@@ -240,7 +240,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder, // 0xEC : undefined
     Cpu::op_placeholder, // 0xED : undefined
     Cpu::op_xor_a_u8,    // 0xEE : XOR d8
-    Cpu::op_placeholder, // 0xEF : RST 28H
+    Cpu::op_rst_28h,     // 0xEF : RST 28H
     Cpu::op_ldh_a_a8,    // 0xF0 : LDH A,(a8)
     Cpu::op_pop_af,      // 0xF1 : POP AF
     Cpu::op_placeholder, // 0xF2 : LD A,(C)
@@ -248,7 +248,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder, // 0xF4 : undefined
     Cpu::op_push_af,     // 0xF5 : PUSH AF
     Cpu::op_or_a_u8,     // 0xF6 : OR d8
-    Cpu::op_placeholder, // 0xF7 : RST 30H
+    Cpu::op_rst_30h,     // 0xF7 : RST 30H
     Cpu::op_ld_hl_sp_i8, // 0xF8 : LD HL,SP+r8
     Cpu::op_ld_sp_hl,    // 0xF9 : LD SP,HL
     Cpu::op_ld_a_a16,    // 0xFA : LD A,(a16)
@@ -256,7 +256,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder, // 0xFC : undefined
     Cpu::op_placeholder, // 0xFD : undefined
     Cpu::op_cp_a_u8,     // 0xFE : CP d8
-    Cpu::op_placeholder, // 0xFF : RST 38H
+    Cpu::op_rst_38h,     // 0xFF : RST 38H
 ];
 
 const STATUS_FLAG_Z: u8 = 0x80;
@@ -322,6 +322,8 @@ pub struct Cpu {
     registers: CpuRegisters,
     status_flags: u8,
     stack_pointer: u16,
+
+    interrupt_master_enabled: bool,
 }
 
 impl Cpu {
@@ -332,6 +334,7 @@ impl Cpu {
             registers: CpuRegisters::new(),
             status_flags: 0,
             stack_pointer: 0,
+            interrupt_master_enabled: false,
         }
     }
 
@@ -2185,6 +2188,14 @@ impl Cpu {
         self.run_add_u8_and_update_flags(operand);
     }
 
+    /// Opcode 0xC7: [RST 00H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=117)
+    ///
+    /// Unconditional function call to the address 0x0000 (4 machine cycles).
+    fn op_rst_00h(&mut self) {
+        self.stack_push_u16(self.program_counter);
+        self.program_counter = 0x0000;
+    }
+
     /// Opcode 0xC8: [RET Z](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=115)
     ///
     /// Conditional return from a function, depending on the condition 2 (2/5 machine
@@ -2255,6 +2266,14 @@ impl Cpu {
         self.run_adc_and_update_flags(operand);
     }
 
+    /// Opcode 0xCF: [RST 08H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=117)
+    ///
+    /// Unconditional function call to the address 0x0008 (4 machine cycles).
+    fn op_rst_08h(&mut self) {
+        self.stack_push_u16(self.program_counter);
+        self.program_counter = 0x0008;
+    }
+
     /// Opcode 0xD0: [RET NC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=115)
     ///
     /// Conditional return from a function, depending on the condition NC (2/5 machine
@@ -2323,6 +2342,14 @@ impl Cpu {
         self.run_sub_and_update_flags(operand);
     }
 
+    /// Opcode 0xD7: [RST 10H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=117)
+    ///
+    /// Unconditional function call to the address 0x0010 (4 machine cycles).
+    fn op_rst_10h(&mut self) {
+        self.stack_push_u16(self.program_counter);
+        self.program_counter = 0x0010;
+    }
+
     /// Opcode 0xD8: [RET C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=115)
     ///
     /// Conditional return from a function, depending on the condition C (2/5 machine
@@ -2333,6 +2360,16 @@ impl Cpu {
             // TODO: extra dummy cycle
             self.program_counter = self.stack_pop_u16();
         }
+    }
+
+    /// Opcode 0xD9: [RETI](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=116)
+    ///
+    /// Unconditional return from a function. Also enables interrupts by setting IME=1
+    /// (4 machine cycles).
+    fn op_reti(&mut self) {
+        // TODO: extra dummy cycle
+        self.program_counter = self.stack_pop_u16();
+        self.interrupt_master_enabled = true;
     }
 
     /// Opcode 0xDA: [JP C,a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=106)
@@ -2376,6 +2413,14 @@ impl Cpu {
         self.run_sbc_and_update_flags(operand);
     }
 
+    /// Opcode 0xDF: [RST 18H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=117)
+    ///
+    /// Unconditional function call to the address 0x0018 (4 machine cycles).
+    fn op_rst_18h(&mut self) {
+        self.stack_push_u16(self.program_counter);
+        self.program_counter = 0x0018;
+    }
+
     /// Opcode 0xE0: [LDH (a8),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=29)
     ///
     /// Load to the address specified by the 8-bit immediate data following the opcode,
@@ -2411,6 +2456,14 @@ impl Cpu {
     fn op_and_a_u8(&mut self) {
         let operand = self.fetch_u8();
         self.run_and_and_update_flags(operand);
+    }
+
+    /// Opcode 0xE7: [RST 20H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=117)
+    ///
+    /// Unconditional function call to the address 0x0020 (4 machine cycles).
+    fn op_rst_20h(&mut self) {
+        self.stack_push_u16(self.program_counter);
+        self.program_counter = 0x0020;
     }
 
     /// Opcode 0xE8: [ADD SP,r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=75)
@@ -2462,6 +2515,14 @@ impl Cpu {
         self.run_xor_and_update_flags(operand);
     }
 
+    /// Opcode 0xEF: [RST 28H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=117)
+    ///
+    /// Unconditional function call to the address 0x0028 (4 machine cycles).
+    fn op_rst_28h(&mut self) {
+        self.stack_push_u16(self.program_counter);
+        self.program_counter = 0x0028;
+    }
+
     /// Opcode 0xF0: [LDH A,(a8)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=28)
     ///
     /// Load to the 8-bit A register, data from the address specified by the 8-bit
@@ -2501,6 +2562,14 @@ impl Cpu {
     fn op_or_a_u8(&mut self) {
         let operand = self.fetch_u8();
         self.run_or_and_update_flags(operand);
+    }
+
+    /// Opcode 0xF7: [RST 30H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=117)
+    ///
+    /// Unconditional function call to the address 0x0030 (4 machine cycles).
+    fn op_rst_30h(&mut self) {
+        self.stack_push_u16(self.program_counter);
+        self.program_counter = 0x0030;
     }
 
     /// Opcode 0xF8: [LD HL,SP+r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=39)
@@ -2549,5 +2618,13 @@ impl Cpu {
     fn op_cp_a_u8(&mut self) {
         let operand = self.fetch_u8();
         self.run_cp_and_update_flags(operand);
+    }
+
+    /// Opcode 0xFF: [RST 38H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=117)
+    ///
+    /// Unconditional function call to the address 0x0038 (4 machine cycles).
+    fn op_rst_38h(&mut self) {
+        self.stack_push_u16(self.program_counter);
+        self.program_counter = 0x0038;
     }
 }
