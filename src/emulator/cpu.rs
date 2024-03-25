@@ -227,7 +227,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_rst_18h,     // 0xDF : RST 18H
     Cpu::op_ldh_a8_a,    // 0xE0 : LDH (a8),A
     Cpu::op_pop_hl,      // 0xE1 : POP HL
-    Cpu::op_placeholder, // 0xE2 : LD (C),A
+    Cpu::ldh_c_a,        // 0xE2 : LDH (C),A
     Cpu::op_placeholder, // 0xE3 : undefined
     Cpu::op_placeholder, // 0xE4 : undefined
     Cpu::op_push_hl,     // 0xE5 : PUSH HL
@@ -243,8 +243,8 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_rst_28h,     // 0xEF : RST 28H
     Cpu::op_ldh_a_a8,    // 0xF0 : LDH A,(a8)
     Cpu::op_pop_af,      // 0xF1 : POP AF
-    Cpu::op_placeholder, // 0xF2 : LD A,(C)
-    Cpu::op_placeholder, // 0xF3 : DI
+    Cpu::ldh_a_c,        // 0xF2 : LDH A,(C)
+    Cpu::op_di,          // 0xF3 : DI
     Cpu::op_placeholder, // 0xF4 : undefined
     Cpu::op_push_af,     // 0xF5 : PUSH AF
     Cpu::op_or_a_u8,     // 0xF6 : OR d8
@@ -2440,6 +2440,17 @@ impl Cpu {
         self.registers.register_h = self.stack_pop_u8();
     }
 
+    /// Opcode 0xE2: [LDH (C),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
+    ///
+    /// Load to the address specified by the 8-bit C register, data from the 8-bit A
+    /// register. The full 16-bit absolute address is obtained by setting the most
+    /// significant byte to 0xFF and the least significant byte to the value of C, so
+    /// the possible range is 0xFF00-0xFFFF (2 machine cycles).
+    fn ldh_c_a(&mut self) {
+        let address = 0xFF00 & self.registers.register_c as u16;
+        self.memory.write(address, self.registers.register_a);
+    }
+
     /// Opcode 0xE5: [PUSH HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
     ///
     /// Push to the stack memory, data from the 16-bit register HL (4 machine cycles).
@@ -2544,6 +2555,26 @@ impl Cpu {
     fn op_pop_af(&mut self) {
         self.status_flags = self.stack_pop_u8();
         self.registers.register_a = self.stack_pop_u8();
+    }
+
+    /// Opcode 0xE2: [LDH A,(C)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
+    ///
+    /// Load to the 8-bit A register, data from the address specified by the 8-bit C
+    /// register. The full 16-bit absolute address is obtained by setting the most
+    /// significant byte to 0xFF and the least significant byte to the value of C, so
+    /// the possible range is 0xFF00-0xFFFF (2 machine cycles).
+    fn ldh_a_c(&mut self) {
+        let address = 0xFF00 & self.registers.register_c as u16;
+        self.registers.register_a = self.memory.read(address);
+    }
+
+    /// Opcode 0xF3: [DI](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=118)
+    ///
+    /// Disables interrupt handling by setting IME=0 and cancelling any scheduled
+    /// effects of the EI instruction if any (1 machine cycles).
+    fn op_di(&mut self) {
+        self.interrupt_master_enabled = false;
+        // TODO cancel effects of EI
     }
 
     /// Opcode 0xF5: [PUSH AF](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
