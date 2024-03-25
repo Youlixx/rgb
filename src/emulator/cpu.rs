@@ -193,35 +193,35 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_cp_a_l,      // 0xBD : CP L
     Cpu::op_cp_a_hl,     // 0xBE : CP (HL)
     Cpu::op_cp_a_a,      // 0xBF : CP A
-    Cpu::op_placeholder, // 0xC0 : RET NZ
+    Cpu::op_ret_nz,      // 0xC0 : RET NZ
     Cpu::op_pop_bc,      // 0xC1 : POP BC
     Cpu::op_jp_nz_a16,   // 0xC2 : JP NZ,a16
     Cpu::op_jp_a16,      // 0xC3 : JP a16
-    Cpu::op_placeholder, // 0xC4 : CALL NZ,a16
+    Cpu::op_call_nz_a16, // 0xC4 : CALL NZ,a16
     Cpu::op_push_bc,     // 0xC5 : PUSH BC
     Cpu::op_add_a_u8,    // 0xC6 : ADD A,d8
     Cpu::op_placeholder, // 0xC7 : RST 00H
-    Cpu::op_placeholder, // 0xC8 : RET Z
+    Cpu::op_ret_z,       // 0xC8 : RET Z
     Cpu::op_placeholder, // 0xC9 : RET
     Cpu::op_jp_z_a16,    // 0xCA : JP Z,a16
     Cpu::op_placeholder, // 0xCB : PREFIX CB
-    Cpu::op_placeholder, // 0xCC : CALL Z,a16
-    Cpu::op_placeholder, // 0xCD : CALL a16
+    Cpu::op_call_z_a16,  // 0xCC : CALL Z,a16
+    Cpu::op_call_a16,    // 0xCD : CALL a16
     Cpu::op_adc_a_u8,    // 0xCE : ADC A,d8
     Cpu::op_placeholder, // 0xCF : RST 08H
-    Cpu::op_placeholder, // 0xD0 : RET NC
+    Cpu::op_ret_nc,      // 0xD0 : RET NC
     Cpu::op_pop_de,      // 0xD1 : POP DE
     Cpu::op_jp_nc_a16,   // 0xD2 : JP NC,a16
     Cpu::op_placeholder, // 0xD3 : undefined
-    Cpu::op_placeholder, // 0xD4 : CALL NC,a16
+    Cpu::op_call_nc_a16, // 0xD4 : CALL NC,a16
     Cpu::op_push_de,     // 0xD5 : PUSH DE
     Cpu::op_sub_a_u8,    // 0xD6 : SUB d8
     Cpu::op_placeholder, // 0xD7 : RST 10H
-    Cpu::op_placeholder, // 0xD8 : RET C
+    Cpu::op_ret_c,       // 0xD8 : RET C
     Cpu::op_placeholder, // 0xD9 : RETI
     Cpu::op_jp_c_a16,    // 0xDA : JP C,a16
     Cpu::op_placeholder, // 0xDB : undefined
-    Cpu::op_placeholder, // 0xDC : CALL C,a16
+    Cpu::op_call_c_a16,  // 0xDC : CALL C,a16
     Cpu::op_placeholder, // 0xDD : undefined
     Cpu::op_sbc_a_u8,    // 0xDE : SBC A,d8
     Cpu::op_placeholder, // 0xDF : RST 18H
@@ -375,6 +375,11 @@ impl Cpu {
     fn stack_push_u8(&mut self, value: u8) {
         self.stack_pointer = self.stack_pointer.wrapping_sub(1);
         self.memory.write(self.stack_pointer, value);
+    }
+
+    fn stack_pop_u16(&mut self) -> u16 {
+        // TODO check LSB/MSB order
+        (self.stack_pop_u8() as u16) | ((self.stack_pop_u8() as u16) << 8)
     }
 
     fn stack_push_u16(&mut self, value: u16) {
@@ -2103,6 +2108,18 @@ impl Cpu {
         self.run_cp_and_update_flags(self.registers.register_a);
     }
 
+    /// Opcode 0xC0: [RET NZ](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=115)
+    ///
+    /// Conditional return from a function, depending on the condition NZ (2/5 machine
+    /// cycles).
+    fn op_ret_nz(&mut self) {
+        // TODO: extra dummy cycle
+        if (self.status_flags & STATUS_FLAG_Z) == 0 {
+            // TODO: extra dummy cycle
+            self.program_counter = self.stack_pop_u16();
+        }
+    }
+
     /// Opcode 0xC1: [POP BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
     ///
     /// Pops to the 16-bit register BC, data from the stack memory (3 machine cycles).
@@ -2135,6 +2152,22 @@ impl Cpu {
         self.program_counter = self.fetch_u16();
     }
 
+    /// Opcode 0xC4: [CALL NZ,a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=112)
+    ///
+    /// Conditional function call to the absolute address specified by the 16-bit
+    /// operand following the opcode, depending on the condition NZ. Note that the
+    /// operand (absolute address) is read even when the condition is false (3/6
+    /// machine cycles).
+    fn op_call_nz_a16(&mut self) {
+        let address = self.fetch_u16();
+
+        if (self.status_flags & STATUS_FLAG_Z) == 0 {
+            // TODO: need extra cycle
+            self.stack_push_u16(self.program_counter);
+            self.program_counter = address;
+        }
+    }
+
     /// Opcode 0xC5: [PUSH BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
     ///
     /// Push to the stack memory, data from the 16-bit register BC (4 machine cycles).
@@ -2152,6 +2185,26 @@ impl Cpu {
         self.run_add_u8_and_update_flags(operand);
     }
 
+    /// Opcode 0xC8: [RET Z](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=115)
+    ///
+    /// Conditional return from a function, depending on the condition 2 (2/5 machine
+    /// cycles).
+    fn op_ret_z(&mut self) {
+        // TODO: extra dummy cycle
+        if (self.status_flags & STATUS_FLAG_Z) != 0 {
+            // TODO: extra dummy cycle
+            self.program_counter = self.stack_pop_u16();
+        }
+    }
+
+    /// Opcode 0xC9: [RET](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=114)
+    ///
+    /// Unconditional return from a function (4 machine cycles).
+    fn op_ret(&mut self) {
+        // TODO: extra cycle
+        self.program_counter = self.stack_pop_u16();
+    }
+
     /// Opcode 0xCA: [JP Z,a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=106)
     ///
     /// Conditional jump to the absolute address specified by the 16-bit operand
@@ -2167,6 +2220,32 @@ impl Cpu {
         }
     }
 
+    /// Opcode 0xCC: [CALL Z,a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=112)
+    ///
+    /// Conditional function call to the absolute address specified by the 16-bit
+    /// operand following the opcode, depending on the condition Z. Note that the
+    /// operand (absolute address) is read even when the condition is false (3/6
+    /// machine cycles).
+    fn op_call_z_a16(&mut self) {
+        let address = self.fetch_u16();
+
+        if (self.status_flags & STATUS_FLAG_Z) != 0 {
+            // TODO: need extra cycle
+            self.stack_push_u16(self.program_counter);
+            self.program_counter = address;
+        }
+    }
+
+    /// Opcode 0xCD: [CALL a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=111)
+    ///
+    /// Unconditional function call to the absolute address specified by the 16-bit
+    /// operand following the opcode (6 machine cycles).
+    fn op_call_a16(&mut self) {
+        let address = self.fetch_u16();
+        self.stack_push_u16(self.program_counter);
+        self.program_counter = address;
+    }
+
     /// Opcode 0xCE: [ADC A,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=45)
     ///
     /// Adds to the 8-bit A register, the carry flag and the immediate data following
@@ -2174,6 +2253,18 @@ impl Cpu {
     fn op_adc_a_u8(&mut self) {
         let operand = self.fetch_u8();
         self.run_adc_and_update_flags(operand);
+    }
+
+    /// Opcode 0xD0: [RET NC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=115)
+    ///
+    /// Conditional return from a function, depending on the condition NC (2/5 machine
+    /// cycles).
+    fn op_ret_nc(&mut self) {
+        // TODO: extra dummy cycle
+        if (self.status_flags & STATUS_FLAG_C) == 0 {
+            // TODO: extra dummy cycle
+            self.program_counter = self.stack_pop_u16();
+        }
     }
 
     /// Opcode 0xD1: [POP DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
@@ -2199,6 +2290,22 @@ impl Cpu {
         }
     }
 
+    /// Opcode 0xD4: [CALL NC,a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=112)
+    ///
+    /// Conditional function call to the absolute address specified by the 16-bit
+    /// operand following the opcode, depending on the condition NC. Note that the
+    /// operand (absolute address) is read even when the condition is false (3/6
+    /// machine cycles).
+    fn op_call_nc_a16(&mut self) {
+        let address = self.fetch_u16();
+
+        if (self.status_flags & STATUS_FLAG_C) == 0 {
+            // TODO: need extra cycle
+            self.stack_push_u16(self.program_counter);
+            self.program_counter = address;
+        }
+    }
+
     /// Opcode 0xD5: [PUSH DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
     ///
     /// Push to the stack memory, data from the 16-bit register DE (4 machine cycles).
@@ -2216,6 +2323,18 @@ impl Cpu {
         self.run_sub_and_update_flags(operand);
     }
 
+    /// Opcode 0xD8: [RET C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=115)
+    ///
+    /// Conditional return from a function, depending on the condition C (2/5 machine
+    /// cycles).
+    fn op_ret_c(&mut self) {
+        // TODO: extra dummy cycle
+        if (self.status_flags & STATUS_FLAG_C) != 0 {
+            // TODO: extra dummy cycle
+            self.program_counter = self.stack_pop_u16();
+        }
+    }
+
     /// Opcode 0xDA: [JP C,a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=106)
     ///
     /// Conditional jump to the absolute address specified by the 16-bit operand
@@ -2227,6 +2346,22 @@ impl Cpu {
 
         if (self.status_flags & STATUS_FLAG_C) != 0 {
             // TODO: add extra cycle
+            self.program_counter = address;
+        }
+    }
+
+    /// Opcode 0xDC: [CALL C,a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=112)
+    ///
+    /// Conditional function call to the absolute address specified by the 16-bit
+    /// operand following the opcode, depending on the condition C. Note that the
+    /// operand (absolute address) is read even when the condition is false (3/6
+    /// machine cycles).
+    fn op_call_c_a16(&mut self) {
+        let address = self.fetch_u16();
+
+        if (self.status_flags & STATUS_FLAG_C) != 0 {
+            // TODO: need extra cycle
+            self.stack_push_u16(self.program_counter);
             self.program_counter = address;
         }
     }
