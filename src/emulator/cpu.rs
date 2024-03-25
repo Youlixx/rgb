@@ -8,7 +8,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_inc_b,       // 0x04 : INC B
     Cpu::op_dec_b,       // 0x05 : DEC B
     Cpu::op_ld_b_d8,     // 0x06 : LD B,d8
-    Cpu::op_placeholder, // 0x07 : RLCA
+    Cpu::op_rlca,        // 0x07 : RLCA
     Cpu::op_ld_u16_sp,   // 0x08 : LD (a16),SP
     Cpu::op_add_hl_bc,   // 0x09 : ADD HL,BC
     Cpu::op_ld_a_bc,     // 0x0A : LD A,(BC)
@@ -16,7 +16,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_inc_c,       // 0x0C : INC C
     Cpu::op_dec_c,       // 0x0D : DEC C
     Cpu::op_ld_c_d8,     // 0x0E : LD C,d8
-    Cpu::op_placeholder, // 0x0F : RRCA
+    Cpu::op_rrca,        // 0x0F : RRCA
     Cpu::op_placeholder, // 0x10 : STOP 0
     Cpu::op_ld_de_u16,   // 0x11 : LD DE,d16
     Cpu::op_ld_de_a,     // 0x12 : LD (DE),A
@@ -24,7 +24,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_inc_d,       // 0x14 : INC D
     Cpu::op_dec_d,       // 0x15 : DEC D
     Cpu::op_ld_d_d8,     // 0x16 : LD D,d8
-    Cpu::op_placeholder, // 0x17 : RLA
+    Cpu::op_rla,         // 0x17 : RLA
     Cpu::op_jr_r8,       // 0x18 : JR r8
     Cpu::op_add_hl_de,   // 0x19 : ADD HL,DE
     Cpu::op_ld_a_de,     // 0x1A : LD A,(DE)
@@ -32,7 +32,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_inc_e,       // 0x1C : INC E
     Cpu::op_dec_e,       // 0x1D : DEC E
     Cpu::op_ld_e_d8,     // 0x1E : LD E,d8
-    Cpu::op_placeholder, // 0x1F : RRA
+    Cpu::op_rra,         // 0x1F : RRA
     Cpu::op_jp_nz_r8,    // 0x20 : JR NZ,r8
     Cpu::op_ld_hl_u16,   // 0x21 : LD HL,d16
     Cpu::op_ld_hl_inc_a, // 0x22 : LD (HL+),A
@@ -637,6 +637,20 @@ impl Cpu {
         self.registers.register_b = self.fetch_u8();
     }
 
+    /// Opcode 0x07: [RLCA](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=77)
+    ///
+    /// Rotate the 8-bit register B to the left (1 machine cycle).
+    fn op_rlca(&mut self) {
+        let carry = (self.registers.register_a & 0x80) != 0;
+        self.registers.register_a = self.registers.register_a.wrapping_shl(1);
+        self.status_flags = 0;
+
+        if carry {
+            self.status_flags |= STATUS_FLAG_C;
+            self.registers.register_a |= 0x01;
+        }
+    }
+
     /// Opcode 0x08: [LD (a16),SP](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
     ///
     /// Load to the absolute address specified by the 16-bit operand following the
@@ -696,6 +710,20 @@ impl Cpu {
         self.registers.register_c = self.fetch_u8();
     }
 
+    /// Opcode 0x0F: [RRCA](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=78)
+    ///
+    /// Rotate the 8-bit register B to the right (1 machine cycle).
+    fn op_rrca(&mut self) {
+        let carry = (self.registers.register_a & 0x01) != 0;
+        self.registers.register_a = self.registers.register_a.wrapping_shr(1);
+        self.status_flags = 0;
+
+        if carry {
+            self.status_flags |= STATUS_FLAG_C;
+            self.registers.register_a |= 0x80;
+        }
+    }
+
     /// Opcode 0x11: [LD DE,d16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=34)
     ///
     /// Load to the 16-bit register DE, the immediate 16-bit data following the opcode
@@ -742,6 +770,23 @@ impl Cpu {
     /// machine cycles).
     fn op_ld_d_d8(&mut self) {
         self.registers.register_d = self.fetch_u8();
+    }
+
+    /// Opcode 0x17: [RLA](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=79)
+    ///
+    /// Rotate the 8-bit register B to the left (1 machine cycle).
+    fn op_rla(&mut self) {
+        let carry = (self.registers.register_a & 0x80) != 0;
+        self.registers.register_a = self.registers.register_a.wrapping_shl(1);
+        self.status_flags = 0;
+
+        if (self.status_flags & STATUS_FLAG_C) != 0 {
+            self.registers.register_a |= 0x01;
+        }
+
+        if carry {
+            self.status_flags |= STATUS_FLAG_C;
+        }
     }
 
     /// Opcode 0x17: [JR r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=108)
@@ -797,6 +842,23 @@ impl Cpu {
     /// machine cycles).
     fn op_ld_e_d8(&mut self) {
         self.registers.register_e = self.fetch_u8();
+    }
+
+    /// Opcode 0x1F: [RRA](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=80)
+    ///
+    /// Rotate the 8-bit register B to the right (1 machine cycle).
+    fn op_rra(&mut self) {
+        let carry = (self.registers.register_a & 0x01) != 0;
+        self.registers.register_a = self.registers.register_a.wrapping_shr(1);
+        self.status_flags = 0;
+
+        if (self.status_flags & STATUS_FLAG_C) != 0 {
+            self.registers.register_a |= 0x80;
+        }
+
+        if carry {
+            self.status_flags |= STATUS_FLAG_C;
+        }
     }
 
     /// Opcode 0x20: [JR NZ,r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=109)
