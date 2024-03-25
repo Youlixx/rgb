@@ -25,7 +25,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_dec_d,       // 0x15 : DEC D
     Cpu::op_ld_d_d8,     // 0x16 : LD D,d8
     Cpu::op_placeholder, // 0x17 : RLA
-    Cpu::op_placeholder, // 0x18 : JR r8
+    Cpu::op_jr_r8,       // 0x18 : JR r8
     Cpu::op_add_hl_de,   // 0x19 : ADD HL,DE
     Cpu::op_ld_a_de,     // 0x1A : LD A,(DE)
     Cpu::op_dec_de,      // 0x1B : DEC DE
@@ -33,7 +33,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_dec_e,       // 0x1D : DEC E
     Cpu::op_ld_e_d8,     // 0x1E : LD E,d8
     Cpu::op_placeholder, // 0x1F : RRA
-    Cpu::op_placeholder, // 0x20 : JR NZ,r8
+    Cpu::op_jp_nz_r8,    // 0x20 : JR NZ,r8
     Cpu::op_ld_hl_u16,   // 0x21 : LD HL,d16
     Cpu::op_ld_hl_inc_a, // 0x22 : LD (HL+),A
     Cpu::op_inc_hl,      // 0x23 : INC HL
@@ -41,7 +41,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_dec_h,       // 0x25 : DEC H
     Cpu::op_ld_h_d8,     // 0x26 : LD H,d8
     Cpu::op_daa,         // 0x27 : DAA
-    Cpu::op_placeholder, // 0x28 : JR Z,r8
+    Cpu::op_jp_z_r8,     // 0x28 : JR Z,r8
     Cpu::op_add_hl_hl,   // 0x29 : ADD HL,HL
     Cpu::op_ld_a_hl_inc, // 0x2A : LD A,(HL+)
     Cpu::op_dec_hl,      // 0x2B : DEC HL
@@ -49,7 +49,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_dec_l,       // 0x2D : DEC L
     Cpu::op_ld_l_d8,     // 0x2E : LD L,d8
     Cpu::op_cpl,         // 0x2F : CPL
-    Cpu::op_placeholder, // 0x30 : JR NC,r8
+    Cpu::op_jp_nc_r8,    // 0x30 : JR NC,r8
     Cpu::op_ld_sp_u16,   // 0x31 : LD SP,d16
     Cpu::op_ld_hl_dec_a, // 0x32 : LD (HL-),A
     Cpu::op_inc_sp,      // 0x33 : INC SP
@@ -57,7 +57,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_dec_hl_ind,  // 0x35 : DEC (HL)
     Cpu::op_ld_hl_d8,    // 0x36 : LD (HL),d8
     Cpu::op_scf,         // 0x37 : SCF
-    Cpu::op_placeholder, // 0x38 : JR C,r8
+    Cpu::op_jp_c_r8,     // 0x38 : JR C,r8
     Cpu::op_add_hl_sp,   // 0x39 : ADD HL,SP
     Cpu::op_ld_a_hl_dec, // 0x3A : LD A,(HL-)
     Cpu::op_dec_sp,      // 0x3B : DEC SP
@@ -195,15 +195,15 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_cp_a_a,      // 0xBF : CP A
     Cpu::op_placeholder, // 0xC0 : RET NZ
     Cpu::op_pop_bc,      // 0xC1 : POP BC
-    Cpu::op_placeholder, // 0xC2 : JP NZ,a16
-    Cpu::op_placeholder, // 0xC3 : JP a16
+    Cpu::op_jp_nz_a16,   // 0xC2 : JP NZ,a16
+    Cpu::op_jp_a16,      // 0xC3 : JP a16
     Cpu::op_placeholder, // 0xC4 : CALL NZ,a16
     Cpu::op_push_bc,     // 0xC5 : PUSH BC
     Cpu::op_add_a_u8,    // 0xC6 : ADD A,d8
     Cpu::op_placeholder, // 0xC7 : RST 00H
     Cpu::op_placeholder, // 0xC8 : RET Z
     Cpu::op_placeholder, // 0xC9 : RET
-    Cpu::op_placeholder, // 0xCA : JP Z,a16
+    Cpu::op_jp_z_a16,    // 0xCA : JP Z,a16
     Cpu::op_placeholder, // 0xCB : PREFIX CB
     Cpu::op_placeholder, // 0xCC : CALL Z,a16
     Cpu::op_placeholder, // 0xCD : CALL a16
@@ -211,7 +211,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder, // 0xCF : RST 08H
     Cpu::op_placeholder, // 0xD0 : RET NC
     Cpu::op_pop_de,      // 0xD1 : POP DE
-    Cpu::op_placeholder, // 0xD2 : JP NC,a16
+    Cpu::op_jp_nc_a16,   // 0xD2 : JP NC,a16
     Cpu::op_placeholder, // 0xD3 : undefined
     Cpu::op_placeholder, // 0xD4 : CALL NC,a16
     Cpu::op_push_de,     // 0xD5 : PUSH DE
@@ -219,7 +219,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_placeholder, // 0xD7 : RST 10H
     Cpu::op_placeholder, // 0xD8 : RET C
     Cpu::op_placeholder, // 0xD9 : RETI
-    Cpu::op_placeholder, // 0xDA : JP C,a16
+    Cpu::op_jp_c_a16,    // 0xDA : JP C,a16
     Cpu::op_placeholder, // 0xDB : undefined
     Cpu::op_placeholder, // 0xDC : CALL C,a16
     Cpu::op_placeholder, // 0xDD : undefined
@@ -234,7 +234,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_and_a_u8,    // 0xE6 : AND d8
     Cpu::op_placeholder, // 0xE7 : RST 20H
     Cpu::op_add_sp_r8,   // 0xE8 : ADD SP,r8
-    Cpu::op_placeholder, // 0xE9 : JP (HL)
+    Cpu::op_jp_hl,       // 0xE9 : JP (HL)
     Cpu::op_ld_a16_a,    // 0xEA : LD (a16),A
     Cpu::op_placeholder, // 0xEB : undefined
     Cpu::op_placeholder, // 0xEC : undefined
@@ -736,6 +736,15 @@ impl Cpu {
         self.registers.register_d = self.fetch_u8();
     }
 
+    /// Opcode 0x17: [JR r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=108)
+    ///
+    /// Unconditional jump to the relative address specified by the signed 8-bit
+    /// operand following the opcode (3 machine cycles).
+    fn op_jr_r8(&mut self) {
+        let offset = self.fetch_u8() as i8;
+        self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+    }
+
     /// Opcode 0x19: [ADD HL,DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
     ///
     /// Adds to the 16-bit HL register pair, the 16-bit register DE, and stores the
@@ -780,6 +789,21 @@ impl Cpu {
     /// machine cycles).
     fn op_ld_e_d8(&mut self) {
         self.registers.register_e = self.fetch_u8();
+    }
+
+    /// Opcode 0x20: [JR NZ,r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=109)
+    ///
+    /// Conditional jump to the relative address specified by the signed 8-bit operand
+    /// following the opcode, depending on the condition NZ. Note that the operand
+    /// (relative address offset) is read even when the condition is false (2/3 machine
+    /// cycles).
+    fn op_jp_nz_r8(&mut self) {
+        let offset = self.fetch_u8() as i8;
+
+        if (self.status_flags & STATUS_FLAG_Z) == 0 {
+            // TODO: add extra cycle
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        }
     }
 
     /// Opcode 0x21: [LD HL,d16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=34)
@@ -871,6 +895,21 @@ impl Cpu {
         self.registers.register_a = (current_value & 0xFF) as u8;
     }
 
+    /// Opcode 0x28: [JR Z,r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=109)
+    ///
+    /// Conditional jump to the relative address specified by the signed 8-bit operand
+    /// following the opcode, depending on the condition Z. Note that the operand
+    /// (relative address offset) is read even when the condition is false (2/3 machine
+    /// cycles).
+    fn op_jp_z_r8(&mut self) {
+        let offset = self.fetch_u8() as i8;
+
+        if (self.status_flags & STATUS_FLAG_Z) != 0 {
+            // TODO: add extra cycle
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        }
+    }
+
     /// Opcode 0x29: [ADD HL,HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
     ///
     /// Adds to the 16-bit HL register pair, the 16-bit register HL, and stores the
@@ -927,6 +966,21 @@ impl Cpu {
     fn op_cpl(&mut self) {
         self.registers.register_a = !self.registers.register_a;
         self.status_flags |= STATUS_FLAG_H | STATUS_FLAG_N;
+    }
+
+    /// Opcode 0x30: [JR NC,r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=109)
+    ///
+    /// Conditional jump to the relative address specified by the signed 8-bit operand
+    /// following the opcode, depending on the condition NC. Note that the operand
+    /// (relative address offset) is read even when the condition is false (2/3 machine
+    /// cycles).
+    fn op_jp_nc_r8(&mut self) {
+        let offset = self.fetch_u8() as i8;
+
+        if (self.status_flags & STATUS_FLAG_C) == 0 {
+            // TODO: add extra cycle
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        }
     }
 
     /// Opcode 0x31: [LD SP,d16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=34)
@@ -993,6 +1047,21 @@ impl Cpu {
     fn op_scf(&mut self) {
         self.status_flags |= STATUS_FLAG_C;
         self.status_flags &= !(STATUS_FLAG_H | STATUS_FLAG_N);
+    }
+
+    /// Opcode 0x38: [JR C,r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=109)
+    ///
+    /// Conditional jump to the relative address specified by the signed 8-bit operand
+    /// following the opcode, depending on the condition C. Note that the operand
+    /// (relative address offset) is read even when the condition is false (2/3 machine
+    /// cycles).
+    fn op_jp_c_r8(&mut self) {
+        let offset = self.fetch_u8() as i8;
+
+        if (self.status_flags & STATUS_FLAG_C) != 0 {
+            // TODO: add extra cycle
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        }
     }
 
     /// Opcode 0x39: [ADD HL,SP](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
@@ -2042,6 +2111,30 @@ impl Cpu {
         self.registers.register_b = self.stack_pop_u8();
     }
 
+    /// Opcode 0xC2: [JP NZ,a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=106)
+    ///
+    /// Conditional jump to the absolute address specified by the 16-bit operand
+    /// following the opcode, depending on the condition NZ. Note that the operand
+    /// (absolute address) is read even when the condition is false (3/4 machine
+    /// cycles).
+    fn op_jp_nz_a16(&mut self) {
+        let address = self.fetch_u16();
+
+        if (self.status_flags & STATUS_FLAG_Z) == 0 {
+            // TODO: add extra cycle
+            self.program_counter = address;
+        }
+    }
+
+    /// Opcode 0xC3: [JP a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=104)
+    ///
+    /// Unconditional jump to the absolute address specified by the 16-bit immediate
+    /// operand following the opcode (4 machine cycles).
+    fn op_jp_a16(&mut self) {
+        // TODO: need extra cycle
+        self.program_counter = self.fetch_u16();
+    }
+
     /// Opcode 0xC5: [PUSH BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
     ///
     /// Push to the stack memory, data from the 16-bit register BC (4 machine cycles).
@@ -2057,6 +2150,21 @@ impl Cpu {
     fn op_add_a_u8(&mut self) {
         let operand = self.fetch_u8();
         self.run_add_u8_and_update_flags(operand);
+    }
+
+    /// Opcode 0xCA: [JP Z,a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=106)
+    ///
+    /// Conditional jump to the absolute address specified by the 16-bit operand
+    /// following the opcode, depending on the condition Z. Note that the operand
+    /// (absolute address) is read even when the condition is false (3/4 machine
+    /// cycles).
+    fn op_jp_z_a16(&mut self) {
+        let address = self.fetch_u16();
+
+        if (self.status_flags & STATUS_FLAG_Z) != 0 {
+            // TODO: add extra cycle
+            self.program_counter = address;
+        }
     }
 
     /// Opcode 0xCE: [ADC A,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=45)
@@ -2076,6 +2184,21 @@ impl Cpu {
         self.registers.register_d = self.stack_pop_u8();
     }
 
+    /// Opcode 0xD2: [JP NC,a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=106)
+    ///
+    /// Conditional jump to the absolute address specified by the 16-bit operand
+    /// following the opcode, depending on the condition NC. Note that the operand
+    /// (absolute address) is read even when the condition is false (3/4 machine
+    /// cycles).
+    fn op_jp_nc_a16(&mut self) {
+        let address = self.fetch_u16();
+
+        if (self.status_flags & STATUS_FLAG_C) == 0 {
+            // TODO: add extra cycle
+            self.program_counter = address;
+        }
+    }
+
     /// Opcode 0xD5: [PUSH DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
     ///
     /// Push to the stack memory, data from the 16-bit register DE (4 machine cycles).
@@ -2091,6 +2214,21 @@ impl Cpu {
     fn op_sub_a_u8(&mut self) {
         let operand = self.fetch_u8();
         self.run_sub_and_update_flags(operand);
+    }
+
+    /// Opcode 0xDA: [JP C,a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=106)
+    ///
+    /// Conditional jump to the absolute address specified by the 16-bit operand
+    /// following the opcode, depending on the condition C. Note that the operand
+    /// (absolute address) is read even when the condition is false (3/4 machine
+    /// cycles).
+    fn op_jp_c_a16(&mut self) {
+        let address = self.fetch_u16();
+
+        if (self.status_flags & STATUS_FLAG_C) != 0 {
+            // TODO: add extra cycle
+            self.program_counter = address;
+        }
     }
 
     /// Opcode 0xDE: [SBC A,d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=51)
@@ -2160,6 +2298,14 @@ impl Cpu {
         if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
             self.status_flags |= STATUS_FLAG_C;
         }
+    }
+
+    /// Opcode 0xE9: [JP (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=105)
+    ///
+    /// Unconditional jump to the absolute address specified by the 16-bit register HL
+    /// (1 machine cycles).
+    fn op_jp_hl(&mut self) {
+        self.program_counter = self.registers.hl();
     }
 
     /// Opcode 0xEA: [LD (a16),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=25)
