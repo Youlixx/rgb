@@ -268,14 +268,14 @@ const CB_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::cb_rlc_l,       // 0x05 : RLC L
     Cpu::cb_rlc_hl,      // 0x06 : RLC (HL)
     Cpu::cb_rlc_a,       // 0x07 : RLC A
-    Cpu::op_placeholder, // 0x08 : RRC B
-    Cpu::op_placeholder, // 0x09 : RRC C
-    Cpu::op_placeholder, // 0x0A : RRC D
-    Cpu::op_placeholder, // 0x0B : RRC E
-    Cpu::op_placeholder, // 0x0C : RRC H
-    Cpu::op_placeholder, // 0x0D : RRC L
-    Cpu::op_placeholder, // 0x0E : RRC (HL)
-    Cpu::op_placeholder, // 0x0F : RRC A
+    Cpu::cb_rrc_b,       // 0x08 : RRC B
+    Cpu::cb_rrc_c,       // 0x09 : RRC C
+    Cpu::cb_rrc_d,       // 0x0A : RRC D
+    Cpu::cb_rrc_e,       // 0x0B : RRC E
+    Cpu::cb_rrc_h,       // 0x0C : RRC H
+    Cpu::cb_rrc_l,       // 0x0D : RRC L
+    Cpu::cb_rrc_hl,      // 0x0E : RRC (HL)
+    Cpu::cb_rrc_a,       // 0x0F : RRC A
     Cpu::op_placeholder, // 0x10 : RL B
     Cpu::op_placeholder, // 0x11 : RL C
     Cpu::op_placeholder, // 0x12 : RL D
@@ -844,6 +844,23 @@ impl Cpu {
     fn run_rlc_u8_and_update_flags(&mut self, operand: u8) -> u8 {
         let carry = (operand & 0x80) != 0;
         let result = operand.wrapping_shl(1) | carry as u8;
+
+        self.status_flags = 0;
+
+        if carry {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        if operand == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        result
+    }
+
+    fn run_rrc_u8_and_update_flags(&mut self, operand: u8) -> u8 {
+        let carry = (operand & 0x01) != 0;
+        let result = operand.wrapping_shr(1) | ((carry as u8) << 7);
 
         self.status_flags = 0;
 
@@ -3052,7 +3069,7 @@ impl Cpu {
         self.registers.register_l = self.run_rlc_u8_and_update_flags(self.registers.register_l);
     }
 
-    /// Opcode 0x06: [RLC (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=81)
+    /// Opcode 0x06: [RLC (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=82)
     ///
     /// Circular rotate left of data from the absolute address specified by the 16-bit
     /// register HL (4 machine cycles).
@@ -3067,5 +3084,64 @@ impl Cpu {
     /// Circular rotate left of the 8-bit register A (2 machine cycles).
     fn cb_rlc_a(&mut self) {
         self.registers.register_a = self.run_rlc_u8_and_update_flags(self.registers.register_a);
+    }
+
+    /// Opcode 0x08: [RRC B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=83)
+    ///
+    /// Circular rotate right of the 8-bit register B (2 machine cycles).
+    fn cb_rrc_b(&mut self) {
+        self.registers.register_b = self.run_rrc_u8_and_update_flags(self.registers.register_b);
+    }
+
+    /// Opcode 0x09: [RRC C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=83)
+    ///
+    /// Circular rotate right of the 8-bit register C (2 machine cycles).
+    fn cb_rrc_c(&mut self) {
+        self.registers.register_c = self.run_rrc_u8_and_update_flags(self.registers.register_c);
+    }
+
+    /// Opcode 0x0A: [RRC D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=83)
+    ///
+    /// Circular rotate right of the 8-bit register D (2 machine cycles).
+    fn cb_rrc_d(&mut self) {
+        self.registers.register_d = self.run_rrc_u8_and_update_flags(self.registers.register_d);
+    }
+
+    /// Opcode 0x0B: [RRC E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=83)
+    ///
+    /// Circular rotate right of the 8-bit register E (2 machine cycles).
+    fn cb_rrc_e(&mut self) {
+        self.registers.register_e = self.run_rrc_u8_and_update_flags(self.registers.register_e);
+    }
+
+    /// Opcode 0x0C: [RRC H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=83)
+    ///
+    /// Circular rotate right of the 8-bit register H (2 machine cycles).
+    fn cb_rrc_h(&mut self) {
+        self.registers.register_h = self.run_rrc_u8_and_update_flags(self.registers.register_h);
+    }
+
+    /// Opcode 0x0D: [RRC L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=83)
+    ///
+    /// Circular rotate right of the 8-bit register L (2 machine cycles).
+    fn cb_rrc_l(&mut self) {
+        self.registers.register_l = self.run_rrc_u8_and_update_flags(self.registers.register_l);
+    }
+
+    /// Opcode 0x0E: [RRC (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=84)
+    ///
+    /// Circular rotate right of data from the absolute address specified by the 16-bit
+    /// register HL (4 machine cycles).
+    fn cb_rrc_hl(&mut self) {
+        let operand = self.read_hl();
+        let value = self.run_rrc_u8_and_update_flags(operand);
+        self.write_hl(value);
+    }
+
+    /// Opcode 0x0F: [RRC A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=83)
+    ///
+    /// Circular rotate right of the 8-bit register A (2 machine cycles).
+    fn cb_rrc_a(&mut self) {
+        self.registers.register_a = self.run_rrc_u8_and_update_flags(self.registers.register_a);
     }
 }
