@@ -276,14 +276,14 @@ const CB_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::cb_rrc_l,       // 0x0D : RRC L
     Cpu::cb_rrc_hl,      // 0x0E : RRC (HL)
     Cpu::cb_rrc_a,       // 0x0F : RRC A
-    Cpu::op_placeholder, // 0x10 : RL B
-    Cpu::op_placeholder, // 0x11 : RL C
-    Cpu::op_placeholder, // 0x12 : RL D
-    Cpu::op_placeholder, // 0x13 : RL E
-    Cpu::op_placeholder, // 0x14 : RL H
-    Cpu::op_placeholder, // 0x15 : RL L
-    Cpu::op_placeholder, // 0x16 : RL (HL)
-    Cpu::op_placeholder, // 0x17 : RL A
+    Cpu::cb_rl_b,        // 0x10 : RL B
+    Cpu::cb_rl_c,        // 0x11 : RL C
+    Cpu::cb_rl_d,        // 0x12 : RL D
+    Cpu::cb_rl_e,        // 0x13 : RL E
+    Cpu::cb_rl_h,        // 0x14 : RL H
+    Cpu::cb_rl_l,        // 0x15 : RL L
+    Cpu::cb_rl_hl,       // 0x16 : RL (HL)
+    Cpu::cb_rl_a,        // 0x17 : RL A
     Cpu::op_placeholder, // 0x18 : RR B
     Cpu::op_placeholder, // 0x19 : RR C
     Cpu::op_placeholder, // 0x1A : RR D
@@ -861,6 +861,23 @@ impl Cpu {
     fn run_rrc_u8_and_update_flags(&mut self, operand: u8) -> u8 {
         let carry = (operand & 0x01) != 0;
         let result = operand.wrapping_shr(1) | ((carry as u8) << 7);
+
+        self.status_flags = 0;
+
+        if carry {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        if operand == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        result
+    }
+
+    fn run_rl_u8_and_update_flags(&mut self, operand: u8) -> u8 {
+        let carry = (operand & 0x80) != 0;
+        let result = operand.wrapping_shl(1) | ((self.status_flags & STATUS_FLAG_C) != 0) as u8;
 
         self.status_flags = 0;
 
@@ -3143,5 +3160,64 @@ impl Cpu {
     /// Circular rotate right of the 8-bit register A (2 machine cycles).
     fn cb_rrc_a(&mut self) {
         self.registers.register_a = self.run_rrc_u8_and_update_flags(self.registers.register_a);
+    }
+
+    /// Opcode 0x10: [RL B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Rotate left of the 8-bit register B (2 machine cycles).
+    fn cb_rl_b(&mut self) {
+        self.registers.register_b = self.run_rl_u8_and_update_flags(self.registers.register_b);
+    }
+
+    /// Opcode 0x11: [RL C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Rotate left of the 8-bit register C (2 machine cycles).
+    fn cb_rl_c(&mut self) {
+        self.registers.register_c = self.run_rl_u8_and_update_flags(self.registers.register_c);
+    }
+
+    /// Opcode 0x12: [RL D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Rotate left of the 8-bit register D (2 machine cycles).
+    fn cb_rl_d(&mut self) {
+        self.registers.register_d = self.run_rl_u8_and_update_flags(self.registers.register_d);
+    }
+
+    /// Opcode 0x13: [RL E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Rotate left of the 8-bit register E (2 machine cycles).
+    fn cb_rl_e(&mut self) {
+        self.registers.register_e = self.run_rl_u8_and_update_flags(self.registers.register_e);
+    }
+
+    /// Opcode 0x14: [RL H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Rotate left of the 8-bit register H (2 machine cycles).
+    fn cb_rl_h(&mut self) {
+        self.registers.register_h = self.run_rl_u8_and_update_flags(self.registers.register_h);
+    }
+
+    /// Opcode 0x15: [RL L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Rotate left of the 8-bit register L (2 machine cycles).
+    fn cb_rl_l(&mut self) {
+        self.registers.register_l = self.run_rl_u8_and_update_flags(self.registers.register_l);
+    }
+
+    /// Opcode 0x16: [RL (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=86)
+    ///
+    /// Rotate left of data from the absolute address specified by the 16-bit register
+    /// HL (4 machine cycles).
+    fn cb_rl_hl(&mut self) {
+        let operand = self.read_hl();
+        let value = self.run_rl_u8_and_update_flags(operand);
+        self.write_hl(value);
+    }
+
+    /// Opcode 0x17: [RL A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Rotate left of the 8-bit register A (2 machine cycles).
+    fn cb_rl_a(&mut self) {
+        self.registers.register_a = self.run_rl_u8_and_update_flags(self.registers.register_a);
     }
 }
