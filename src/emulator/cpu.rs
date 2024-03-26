@@ -292,14 +292,14 @@ const CB_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::cb_rr_l,        // 0x1D : RR L
     Cpu::cb_rr_hl,       // 0x1E : RR (HL)
     Cpu::cb_rr_a,        // 0x1F : RR A
-    Cpu::op_placeholder, // 0x20 : SLA B
-    Cpu::op_placeholder, // 0x21 : SLA C
-    Cpu::op_placeholder, // 0x22 : SLA D
-    Cpu::op_placeholder, // 0x23 : SLA E
-    Cpu::op_placeholder, // 0x24 : SLA H
-    Cpu::op_placeholder, // 0x25 : SLA L
-    Cpu::op_placeholder, // 0x26 : SLA (HL)
-    Cpu::op_placeholder, // 0x27 : SLA A
+    Cpu::cb_sla_b,       // 0x20 : SLA B
+    Cpu::cb_sla_c,       // 0x21 : SLA C
+    Cpu::cb_sla_d,       // 0x22 : SLA D
+    Cpu::cb_sla_e,       // 0x23 : SLA E
+    Cpu::cb_sla_h,       // 0x24 : SLA H
+    Cpu::cb_sla_l,       // 0x25 : SLA L
+    Cpu::cb_sla_hl,      // 0x26 : SLA (HL)
+    Cpu::cb_sla_a,       // 0x27 : SLA A
     Cpu::op_placeholder, // 0x28 : SRA B
     Cpu::op_placeholder, // 0x29 : SRA C
     Cpu::op_placeholder, // 0x2A : SRA D
@@ -908,6 +908,21 @@ impl Cpu {
         }
 
         result
+    }
+
+    fn run_sla_u8_and_update_flags(&mut self, operand: u8) -> u8 {
+        let carry = (operand & 0x80) != 0;
+        self.status_flags = 0;
+
+        if carry {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        if (operand & 0x7F) == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        operand.wrapping_shl(1)
     }
 }
 
@@ -3296,5 +3311,64 @@ impl Cpu {
     /// Rotate right of the 8-bit register A (2 machine cycles).
     fn cb_rr_a(&mut self) {
         self.registers.register_a = self.run_rr_u8_and_update_flags(self.registers.register_a);
+    }
+
+    /// Opcode 0x20: [SLA B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Shift left of the 8-bit register B (2 machine cycles).
+    fn cb_sla_b(&mut self) {
+        self.registers.register_b = self.run_sla_u8_and_update_flags(self.registers.register_b);
+    }
+
+    /// Opcode 0x21: [SLA C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Shift left of the 8-bit register C (2 machine cycles).
+    fn cb_sla_c(&mut self) {
+        self.registers.register_c = self.run_sla_u8_and_update_flags(self.registers.register_c);
+    }
+
+    /// Opcode 0x22: [SLA D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Shift left of the 8-bit register D (2 machine cycles).
+    fn cb_sla_d(&mut self) {
+        self.registers.register_d = self.run_sla_u8_and_update_flags(self.registers.register_d);
+    }
+
+    /// Opcode 0x23: [SLA E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Shift left of the 8-bit register E (2 machine cycles).
+    fn cb_sla_e(&mut self) {
+        self.registers.register_e = self.run_sla_u8_and_update_flags(self.registers.register_e);
+    }
+
+    /// Opcode 0x24: [SLA H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Rotate left of the 8-bit register H (2 machine cycles).
+    fn cb_sla_h(&mut self) {
+        self.registers.register_h = self.run_sla_u8_and_update_flags(self.registers.register_h);
+    }
+
+    /// Opcode 0x25: [SLA L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Rotate left of the 8-bit register L (2 machine cycles).
+    fn cb_sla_l(&mut self) {
+        self.registers.register_l = self.run_sla_u8_and_update_flags(self.registers.register_l);
+    }
+
+    /// Opcode 0x26: [SLA (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=86)
+    ///
+    /// Shift left of data from the absolute address specified by the 16-bit register
+    /// HL (4 machine cycles).
+    fn cb_sla_hl(&mut self) {
+        let operand = self.read_hl();
+        let value = self.run_sla_u8_and_update_flags(operand);
+        self.write_hl(value);
+    }
+
+    /// Opcode 0x27: [SLA A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    ///
+    /// Shift left of the 8-bit register A (2 machine cycles).
+    fn cb_sla_a(&mut self) {
+        self.registers.register_a = self.run_sla_u8_and_update_flags(self.registers.register_a);
     }
 }
