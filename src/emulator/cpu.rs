@@ -284,14 +284,14 @@ const CB_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::cb_rl_l,        // 0x15 : RL L
     Cpu::cb_rl_hl,       // 0x16 : RL (HL)
     Cpu::cb_rl_a,        // 0x17 : RL A
-    Cpu::op_placeholder, // 0x18 : RR B
-    Cpu::op_placeholder, // 0x19 : RR C
-    Cpu::op_placeholder, // 0x1A : RR D
-    Cpu::op_placeholder, // 0x1B : RR E
-    Cpu::op_placeholder, // 0x1C : RR H
-    Cpu::op_placeholder, // 0x1D : RR L
-    Cpu::op_placeholder, // 0x1E : RR (HL)
-    Cpu::op_placeholder, // 0x1F : RR A
+    Cpu::cb_rr_b,        // 0x18 : RR B
+    Cpu::cb_rr_c,        // 0x19 : RR C
+    Cpu::cb_rr_d,        // 0x1A : RR D
+    Cpu::cb_rr_e,        // 0x1B : RR E
+    Cpu::cb_rr_h,        // 0x1C : RR H
+    Cpu::cb_rr_l,        // 0x1D : RR L
+    Cpu::cb_rr_hl,       // 0x1E : RR (HL)
+    Cpu::cb_rr_a,        // 0x1F : RR A
     Cpu::op_placeholder, // 0x20 : SLA B
     Cpu::op_placeholder, // 0x21 : SLA C
     Cpu::op_placeholder, // 0x22 : SLA D
@@ -878,6 +878,24 @@ impl Cpu {
     fn run_rl_u8_and_update_flags(&mut self, operand: u8) -> u8 {
         let carry = (operand & 0x80) != 0;
         let result = operand.wrapping_shl(1) | ((self.status_flags & STATUS_FLAG_C) != 0) as u8;
+
+        self.status_flags = 0;
+
+        if carry {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        if operand == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        result
+    }
+
+    fn run_rr_u8_and_update_flags(&mut self, operand: u8) -> u8 {
+        let carry = (operand & 0x01) != 0;
+        let result =
+            operand.wrapping_shr(1) | ((((self.status_flags & STATUS_FLAG_C) != 0) as u8) << 7);
 
         self.status_flags = 0;
 
@@ -3219,5 +3237,64 @@ impl Cpu {
     /// Rotate left of the 8-bit register A (2 machine cycles).
     fn cb_rl_a(&mut self) {
         self.registers.register_a = self.run_rl_u8_and_update_flags(self.registers.register_a);
+    }
+
+    /// Opcode 0x18: [RR B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=87)
+    ///
+    /// Rotate right of the 8-bit register B (2 machine cycles).
+    fn cb_rr_b(&mut self) {
+        self.registers.register_b = self.run_rr_u8_and_update_flags(self.registers.register_b);
+    }
+
+    /// Opcode 0x19: [RR C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=87)
+    ///
+    /// Rotate right of the 8-bit register C (2 machine cycles).
+    fn cb_rr_c(&mut self) {
+        self.registers.register_c = self.run_rr_u8_and_update_flags(self.registers.register_c);
+    }
+
+    /// Opcode 0x1A: [RR D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=87)
+    ///
+    /// Rotate right of the 8-bit register D (2 machine cycles).
+    fn cb_rr_d(&mut self) {
+        self.registers.register_d = self.run_rr_u8_and_update_flags(self.registers.register_d);
+    }
+
+    /// Opcode 0x1B: [RR E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=87)
+    ///
+    /// Rotate right of the 8-bit register E (2 machine cycles).
+    fn cb_rr_e(&mut self) {
+        self.registers.register_e = self.run_rr_u8_and_update_flags(self.registers.register_e);
+    }
+
+    /// Opcode 0x1C: [RR H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=87)
+    ///
+    /// Rotate right of the 8-bit register H (2 machine cycles).
+    fn cb_rr_h(&mut self) {
+        self.registers.register_h = self.run_rr_u8_and_update_flags(self.registers.register_h);
+    }
+
+    /// Opcode 0x1D: [RR L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=87)
+    ///
+    /// Rotate right of the 8-bit register L (2 machine cycles).
+    fn cb_rr_l(&mut self) {
+        self.registers.register_l = self.run_rr_u8_and_update_flags(self.registers.register_l);
+    }
+
+    /// Opcode 0x1E: [RR (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=88)
+    ///
+    /// Rotate right of data from the absolute address specified by the 16-bit
+    /// register HL (4 machine cycles).
+    fn cb_rr_hl(&mut self) {
+        let operand = self.read_hl();
+        let value = self.run_rr_u8_and_update_flags(operand);
+        self.write_hl(value);
+    }
+
+    /// Opcode 0x1F: [RR A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=87)
+    ///
+    /// Rotate right of the 8-bit register A (2 machine cycles).
+    fn cb_rr_a(&mut self) {
+        self.registers.register_a = self.run_rr_u8_and_update_flags(self.registers.register_a);
     }
 }
