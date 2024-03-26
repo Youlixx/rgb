@@ -3313,49 +3313,49 @@ impl Cpu {
         self.registers.register_a = self.run_rr_u8_and_update_flags(self.registers.register_a);
     }
 
-    /// Opcode 0x20: [SLA B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    /// Opcode 0x20: [SLA B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=89)
     ///
     /// Shift left of the 8-bit register B (2 machine cycles).
     fn cb_sla_b(&mut self) {
         self.registers.register_b = self.run_sla_u8_and_update_flags(self.registers.register_b);
     }
 
-    /// Opcode 0x21: [SLA C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    /// Opcode 0x21: [SLA C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=89)
     ///
     /// Shift left of the 8-bit register C (2 machine cycles).
     fn cb_sla_c(&mut self) {
         self.registers.register_c = self.run_sla_u8_and_update_flags(self.registers.register_c);
     }
 
-    /// Opcode 0x22: [SLA D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    /// Opcode 0x22: [SLA D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=89)
     ///
     /// Shift left of the 8-bit register D (2 machine cycles).
     fn cb_sla_d(&mut self) {
         self.registers.register_d = self.run_sla_u8_and_update_flags(self.registers.register_d);
     }
 
-    /// Opcode 0x23: [SLA E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    /// Opcode 0x23: [SLA E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=89)
     ///
     /// Shift left of the 8-bit register E (2 machine cycles).
     fn cb_sla_e(&mut self) {
         self.registers.register_e = self.run_sla_u8_and_update_flags(self.registers.register_e);
     }
 
-    /// Opcode 0x24: [SLA H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    /// Opcode 0x24: [SLA H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=89)
     ///
     /// Rotate left of the 8-bit register H (2 machine cycles).
     fn cb_sla_h(&mut self) {
         self.registers.register_h = self.run_sla_u8_and_update_flags(self.registers.register_h);
     }
 
-    /// Opcode 0x25: [SLA L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    /// Opcode 0x25: [SLA L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=89)
     ///
     /// Rotate left of the 8-bit register L (2 machine cycles).
     fn cb_sla_l(&mut self) {
         self.registers.register_l = self.run_sla_u8_and_update_flags(self.registers.register_l);
     }
 
-    /// Opcode 0x26: [SLA (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=86)
+    /// Opcode 0x26: [SLA (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=90)
     ///
     /// Shift left of data from the absolute address specified by the 16-bit register
     /// HL (4 machine cycles).
@@ -3365,7 +3365,7 @@ impl Cpu {
         self.write_hl(value);
     }
 
-    /// Opcode 0x27: [SLA A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=85)
+    /// Opcode 0x27: [SLA A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=89)
     ///
     /// Shift left of the 8-bit register A (2 machine cycles).
     fn cb_sla_a(&mut self) {
