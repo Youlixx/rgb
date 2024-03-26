@@ -252,7 +252,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_hl_sp_i8, // 0xF8 : LD HL,SP+r8
     Cpu::op_ld_sp_hl,    // 0xF9 : LD SP,HL
     Cpu::op_ld_a_a16,    // 0xFA : LD A,(a16)
-    Cpu::op_placeholder, // 0xFB : EI
+    Cpu::op_ei,          // 0xFB : EI
     Cpu::op_placeholder, // 0xFC : undefined
     Cpu::op_placeholder, // 0xFD : undefined
     Cpu::op_cp_a_u8,     // 0xFE : CP d8
@@ -2701,6 +2701,15 @@ impl Cpu {
     fn op_ld_a_a16(&mut self) {
         let address = self.fetch_u16();
         self.registers.register_a = self.memory.read(address);
+    }
+
+    /// Opcode 0xFB: [EI](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=119)
+    ///
+    /// Schedules interrupt handling to be enabled after the next machine cycle (1
+    /// machine cycle).
+    fn op_ei(&mut self) {
+        // TODO: should be delayed by one cycle?
+        self.interrupt_master_enabled = false;
     }
 
     /// Opcode 0xFE: [CP d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=54)
