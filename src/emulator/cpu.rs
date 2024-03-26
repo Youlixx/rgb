@@ -300,14 +300,14 @@ const CB_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::cb_sla_l,       // 0x25 : SLA L
     Cpu::cb_sla_hl,      // 0x26 : SLA (HL)
     Cpu::cb_sla_a,       // 0x27 : SLA A
-    Cpu::op_placeholder, // 0x28 : SRA B
-    Cpu::op_placeholder, // 0x29 : SRA C
-    Cpu::op_placeholder, // 0x2A : SRA D
-    Cpu::op_placeholder, // 0x2B : SRA E
-    Cpu::op_placeholder, // 0x2C : SRA H
-    Cpu::op_placeholder, // 0x2D : SRA L
-    Cpu::op_placeholder, // 0x2E : SRA (HL)
-    Cpu::op_placeholder, // 0x2F : SRA A
+    Cpu::cb_sra_b,       // 0x28 : SRA B
+    Cpu::cb_sra_c,       // 0x29 : SRA C
+    Cpu::cb_sra_d,       // 0x2A : SRA D
+    Cpu::cb_sra_e,       // 0x2B : SRA E
+    Cpu::cb_sra_h,       // 0x2C : SRA H
+    Cpu::cb_sra_l,       // 0x2D : SRA L
+    Cpu::cb_sra_hl,      // 0x2E : SRA (HL)
+    Cpu::cb_sra_a,       // 0x2F : SRA A
     Cpu::op_placeholder, // 0x30 : SWAP B
     Cpu::op_placeholder, // 0x31 : SWAP C
     Cpu::op_placeholder, // 0x32 : SWAP D
@@ -923,6 +923,23 @@ impl Cpu {
         }
 
         operand.wrapping_shl(1)
+    }
+
+    fn run_sra_u8_and_update_flags(&mut self, operand: u8) -> u8 {
+        let carry = (operand & 0x01) != 0;
+        let result = operand.wrapping_shr(1) | (operand & 0x80);
+
+        self.status_flags = 0;
+
+        if carry {
+            self.status_flags |= STATUS_FLAG_C;
+        }
+
+        if result == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        result
     }
 }
 
@@ -3370,5 +3387,64 @@ impl Cpu {
     /// Shift left of the 8-bit register A (2 machine cycles).
     fn cb_sla_a(&mut self) {
         self.registers.register_a = self.run_sla_u8_and_update_flags(self.registers.register_a);
+    }
+
+    /// Opcode 0x28: [RR B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=91)
+    ///
+    /// Shift right of the 8-bit register B (2 machine cycles).
+    fn cb_sra_b(&mut self) {
+        self.registers.register_b = self.run_sra_u8_and_update_flags(self.registers.register_b);
+    }
+
+    /// Opcode 0x29: [RR C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=91)
+    ///
+    /// Shift right of the 8-bit register C (2 machine cycles).
+    fn cb_sra_c(&mut self) {
+        self.registers.register_c = self.run_sra_u8_and_update_flags(self.registers.register_c);
+    }
+
+    /// Opcode 0x2A: [RR D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=91)
+    ///
+    /// Shift right of the 8-bit register D (2 machine cycles).
+    fn cb_sra_d(&mut self) {
+        self.registers.register_d = self.run_sra_u8_and_update_flags(self.registers.register_d);
+    }
+
+    /// Opcode 0x2B: [RR E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=91)
+    ///
+    /// Shift right of the 8-bit register E (2 machine cycles).
+    fn cb_sra_e(&mut self) {
+        self.registers.register_e = self.run_sra_u8_and_update_flags(self.registers.register_e);
+    }
+
+    /// Opcode 0x2C: [RR H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=91)
+    ///
+    /// Shift right of the 8-bit register H (2 machine cycles).
+    fn cb_sra_h(&mut self) {
+        self.registers.register_h = self.run_sra_u8_and_update_flags(self.registers.register_h);
+    }
+
+    /// Opcode 0x2D: [RR L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=91)
+    ///
+    /// Shift right of the 8-bit register L (2 machine cycles).
+    fn cb_sra_l(&mut self) {
+        self.registers.register_l = self.run_sra_u8_and_update_flags(self.registers.register_l);
+    }
+
+    /// Opcode 0x2E: [RR (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=92)
+    ///
+    /// Shift right of data from the absolute address specified by the 16-bit register
+    /// HL (4 machine cycles).
+    fn cb_sra_hl(&mut self) {
+        let operand = self.read_hl();
+        let value = self.run_sra_u8_and_update_flags(operand);
+        self.write_hl(value);
+    }
+
+    /// Opcode 0x2F: [RR A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=91)
+    ///
+    /// Shift right of the 8-bit register A (2 machine cycles).
+    fn cb_sra_a(&mut self) {
+        self.registers.register_a = self.run_sra_u8_and_update_flags(self.registers.register_a);
     }
 }
