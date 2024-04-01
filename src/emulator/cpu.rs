@@ -308,14 +308,14 @@ const CB_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::cb_sra_l,       // 0x2D : SRA L
     Cpu::cb_sra_hl,      // 0x2E : SRA (HL)
     Cpu::cb_sra_a,       // 0x2F : SRA A
-    Cpu::op_placeholder, // 0x30 : SWAP B
-    Cpu::op_placeholder, // 0x31 : SWAP C
-    Cpu::op_placeholder, // 0x32 : SWAP D
-    Cpu::op_placeholder, // 0x33 : SWAP E
-    Cpu::op_placeholder, // 0x34 : SWAP H
-    Cpu::op_placeholder, // 0x35 : SWAP L
-    Cpu::op_placeholder, // 0x36 : SWAP (HL)
-    Cpu::op_placeholder, // 0x37 : SWAP A
+    Cpu::cb_swap_b,      // 0x30 : SWAP B
+    Cpu::cb_swap_c,      // 0x31 : SWAP C
+    Cpu::cb_swap_d,      // 0x32 : SWAP D
+    Cpu::cb_swap_e,      // 0x33 : SWAP E
+    Cpu::cb_swap_h,      // 0x34 : SWAP H
+    Cpu::cb_swap_l,      // 0x35 : SWAP L
+    Cpu::cb_swap_hl,     // 0x36 : SWAP (HL)
+    Cpu::cb_swap_a,      // 0x37 : SWAP A
     Cpu::op_placeholder, // 0x38 : SRL B
     Cpu::op_placeholder, // 0x39 : SRL C
     Cpu::op_placeholder, // 0x3A : SRL D
@@ -934,6 +934,17 @@ impl Cpu {
         if carry {
             self.status_flags |= STATUS_FLAG_C;
         }
+
+        if result == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        result
+    }
+
+    fn run_swap_u8_and_update_flags(&mut self, operand: u8) -> u8 {
+        let result = (operand >> 4) | (operand << 4);
+        self.status_flags = 0;
 
         if result == 0 {
             self.status_flags |= STATUS_FLAG_Z;
@@ -3446,5 +3457,64 @@ impl Cpu {
     /// Shift right of the 8-bit register A (2 machine cycles).
     fn cb_sra_a(&mut self) {
         self.registers.register_a = self.run_sra_u8_and_update_flags(self.registers.register_a);
+    }
+
+    /// Opcode 0x30: [SWAP B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=93)
+    ///
+    /// Swap the two halves of the 8-bit register B (2 machine cycles).
+    fn cb_swap_b(&mut self) {
+        self.registers.register_b = self.run_swap_u8_and_update_flags(self.registers.register_b);
+    }
+
+    /// Opcode 0x31: [SWAP C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=93)
+    ///
+    /// Swap the two halves of the 8-bit register C (2 machine cycles).
+    fn cb_swap_c(&mut self) {
+        self.registers.register_c = self.run_swap_u8_and_update_flags(self.registers.register_c);
+    }
+
+    /// Opcode 0x32: [SWAP D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=93)
+    ///
+    /// Swap the two halves of the 8-bit register D (2 machine cycles).
+    fn cb_swap_d(&mut self) {
+        self.registers.register_d = self.run_swap_u8_and_update_flags(self.registers.register_d);
+    }
+
+    /// Opcode 0x33: [SWAP E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=93)
+    ///
+    /// Swap the two halves of the 8-bit register E (2 machine cycles).
+    fn cb_swap_e(&mut self) {
+        self.registers.register_e = self.run_swap_u8_and_update_flags(self.registers.register_e);
+    }
+
+    /// Opcode 0x34: [SWAP H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=93)
+    ///
+    /// Swap the two halves of the 8-bit register H (2 machine cycles).
+    fn cb_swap_h(&mut self) {
+        self.registers.register_h = self.run_swap_u8_and_update_flags(self.registers.register_h);
+    }
+
+    /// Opcode 0x35: [SWAP L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=93)
+    ///
+    /// Swap the two halves of the 8-bit register L (2 machine cycles).
+    fn cb_swap_l(&mut self) {
+        self.registers.register_l = self.run_swap_u8_and_update_flags(self.registers.register_l);
+    }
+
+    /// Opcode 0x36: [SWAP (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=94)
+    ///
+    /// Swap the two halves of the data at the absolute address specified by the 16-bit
+    /// register HL (4 machine cycles).
+    fn cb_swap_hl(&mut self) {
+        let operand = self.read_hl();
+        let value = self.run_swap_u8_and_update_flags(operand);
+        self.write_hl(value);
+    }
+
+    /// Opcode 0x37: [SWAP A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=93)
+    ///
+    /// Swap the two halves of the 8-bit register A (2 machine cycles).
+    fn cb_swap_a(&mut self) {
+        self.registers.register_a = self.run_swap_u8_and_update_flags(self.registers.register_a);
     }
 }
