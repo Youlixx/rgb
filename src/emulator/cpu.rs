@@ -324,70 +324,70 @@ const CB_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::cb_srl_l,       // 0x3D : SRL L
     Cpu::cb_srl_hl,      // 0x3E : SRL (HL)
     Cpu::cb_srl_a,       // 0x3F : SRL A
-    Cpu::op_placeholder, // 0x40 : BIT 0,B
-    Cpu::op_placeholder, // 0x41 : BIT 0,C
-    Cpu::op_placeholder, // 0x42 : BIT 0,D
-    Cpu::op_placeholder, // 0x43 : BIT 0,E
-    Cpu::op_placeholder, // 0x44 : BIT 0,H
-    Cpu::op_placeholder, // 0x45 : BIT 0,L
-    Cpu::op_placeholder, // 0x46 : BIT 0,(HL)
-    Cpu::op_placeholder, // 0x47 : BIT 0,A
-    Cpu::op_placeholder, // 0x48 : BIT 1,B
-    Cpu::op_placeholder, // 0x49 : BIT 1,C
-    Cpu::op_placeholder, // 0x4A : BIT 1,D
-    Cpu::op_placeholder, // 0x4B : BIT 1,E
-    Cpu::op_placeholder, // 0x4C : BIT 1,H
-    Cpu::op_placeholder, // 0x4D : BIT 1,L
-    Cpu::op_placeholder, // 0x4E : BIT 1,(HL)
-    Cpu::op_placeholder, // 0x4F : BIT 1,A
-    Cpu::op_placeholder, // 0x50 : BIT 2,B
-    Cpu::op_placeholder, // 0x51 : BIT 2,C
-    Cpu::op_placeholder, // 0x52 : BIT 2,D
-    Cpu::op_placeholder, // 0x53 : BIT 2,E
-    Cpu::op_placeholder, // 0x54 : BIT 2,H
-    Cpu::op_placeholder, // 0x55 : BIT 2,L
-    Cpu::op_placeholder, // 0x56 : BIT 2,(HL)
-    Cpu::op_placeholder, // 0x57 : BIT 2,A
-    Cpu::op_placeholder, // 0x58 : BIT 3,B
-    Cpu::op_placeholder, // 0x59 : BIT 3,C
-    Cpu::op_placeholder, // 0x5A : BIT 3,D
-    Cpu::op_placeholder, // 0x5B : BIT 3,E
-    Cpu::op_placeholder, // 0x5C : BIT 3,H
-    Cpu::op_placeholder, // 0x5D : BIT 3,L
-    Cpu::op_placeholder, // 0x5E : BIT 3,(HL)
-    Cpu::op_placeholder, // 0x5F : BIT 3,A
-    Cpu::op_placeholder, // 0x60 : BIT 4,B
-    Cpu::op_placeholder, // 0x61 : BIT 4,C
-    Cpu::op_placeholder, // 0x62 : BIT 4,D
-    Cpu::op_placeholder, // 0x63 : BIT 4,E
-    Cpu::op_placeholder, // 0x64 : BIT 4,H
-    Cpu::op_placeholder, // 0x65 : BIT 4,L
-    Cpu::op_placeholder, // 0x66 : BIT 4,(HL)
-    Cpu::op_placeholder, // 0x67 : BIT 4,A
-    Cpu::op_placeholder, // 0x68 : BIT 5,B
-    Cpu::op_placeholder, // 0x69 : BIT 5,C
-    Cpu::op_placeholder, // 0x6A : BIT 5,D
-    Cpu::op_placeholder, // 0x6B : BIT 5,E
-    Cpu::op_placeholder, // 0x6C : BIT 5,H
-    Cpu::op_placeholder, // 0x6D : BIT 5,L
-    Cpu::op_placeholder, // 0x6E : BIT 5,(HL)
-    Cpu::op_placeholder, // 0x6F : BIT 5,A
-    Cpu::op_placeholder, // 0x70 : BIT 6,B
-    Cpu::op_placeholder, // 0x71 : BIT 6,C
-    Cpu::op_placeholder, // 0x72 : BIT 6,D
-    Cpu::op_placeholder, // 0x73 : BIT 6,E
-    Cpu::op_placeholder, // 0x74 : BIT 6,H
-    Cpu::op_placeholder, // 0x75 : BIT 6,L
-    Cpu::op_placeholder, // 0x76 : BIT 6,(HL)
-    Cpu::op_placeholder, // 0x77 : BIT 6,A
-    Cpu::op_placeholder, // 0x78 : BIT 7,B
-    Cpu::op_placeholder, // 0x79 : BIT 7,C
-    Cpu::op_placeholder, // 0x7A : BIT 7,D
-    Cpu::op_placeholder, // 0x7B : BIT 7,E
-    Cpu::op_placeholder, // 0x7C : BIT 7,H
-    Cpu::op_placeholder, // 0x7D : BIT 7,L
-    Cpu::op_placeholder, // 0x7E : BIT 7,(HL)
-    Cpu::op_placeholder, // 0x7F : BIT 7,A
+    Cpu::cb_bit_0_b,     // 0x40 : BIT 0,B
+    Cpu::cb_bit_0_c,     // 0x41 : BIT 0,C
+    Cpu::cb_bit_0_d,     // 0x42 : BIT 0,D
+    Cpu::cb_bit_0_e,     // 0x43 : BIT 0,E
+    Cpu::cb_bit_0_h,     // 0x44 : BIT 0,H
+    Cpu::cb_bit_0_l,     // 0x45 : BIT 0,L
+    Cpu::cb_bit_0_hl,    // 0x46 : BIT 0,(HL)
+    Cpu::cb_bit_0_a,     // 0x47 : BIT 0,A
+    Cpu::cb_bit_1_b,     // 0x48 : BIT 1,B
+    Cpu::cb_bit_1_c,     // 0x49 : BIT 1,C
+    Cpu::cb_bit_1_d,     // 0x4A : BIT 1,D
+    Cpu::cb_bit_1_e,     // 0x4B : BIT 1,E
+    Cpu::cb_bit_1_h,     // 0x4C : BIT 1,H
+    Cpu::cb_bit_1_l,     // 0x4D : BIT 1,L
+    Cpu::cb_bit_1_hl,    // 0x4E : BIT 1,(HL)
+    Cpu::cb_bit_1_a,     // 0x4F : BIT 1,A
+    Cpu::cb_bit_2_b,     // 0x50 : BIT 2,B
+    Cpu::cb_bit_2_c,     // 0x51 : BIT 2,C
+    Cpu::cb_bit_2_d,     // 0x52 : BIT 2,D
+    Cpu::cb_bit_2_e,     // 0x53 : BIT 2,E
+    Cpu::cb_bit_2_h,     // 0x54 : BIT 2,H
+    Cpu::cb_bit_2_l,     // 0x55 : BIT 2,L
+    Cpu::cb_bit_2_hl,    // 0x56 : BIT 2,(HL)
+    Cpu::cb_bit_2_a,     // 0x57 : BIT 2,A
+    Cpu::cb_bit_3_b,     // 0x58 : BIT 3,B
+    Cpu::cb_bit_3_c,     // 0x59 : BIT 3,C
+    Cpu::cb_bit_3_d,     // 0x5A : BIT 3,D
+    Cpu::cb_bit_3_e,     // 0x5B : BIT 3,E
+    Cpu::cb_bit_3_h,     // 0x5C : BIT 3,H
+    Cpu::cb_bit_3_l,     // 0x5D : BIT 3,L
+    Cpu::cb_bit_3_hl,    // 0x5E : BIT 3,(HL)
+    Cpu::cb_bit_3_a,     // 0x5F : BIT 3,A
+    Cpu::cb_bit_4_b,     // 0x60 : BIT 4,B
+    Cpu::cb_bit_4_c,     // 0x61 : BIT 4,C
+    Cpu::cb_bit_4_d,     // 0x62 : BIT 4,D
+    Cpu::cb_bit_4_e,     // 0x63 : BIT 4,E
+    Cpu::cb_bit_4_h,     // 0x64 : BIT 4,H
+    Cpu::cb_bit_4_l,     // 0x65 : BIT 4,L
+    Cpu::cb_bit_4_hl,    // 0x66 : BIT 4,(HL)
+    Cpu::cb_bit_4_a,     // 0x67 : BIT 4,A
+    Cpu::cb_bit_5_b,     // 0x68 : BIT 5,B
+    Cpu::cb_bit_5_c,     // 0x69 : BIT 5,C
+    Cpu::cb_bit_5_d,     // 0x6A : BIT 5,D
+    Cpu::cb_bit_5_e,     // 0x6B : BIT 5,E
+    Cpu::cb_bit_5_h,     // 0x6C : BIT 5,H
+    Cpu::cb_bit_5_l,     // 0x6D : BIT 5,L
+    Cpu::cb_bit_5_hl,    // 0x6E : BIT 5,(HL)
+    Cpu::cb_bit_5_a,     // 0x6F : BIT 5,A
+    Cpu::cb_bit_6_b,     // 0x70 : BIT 6,B
+    Cpu::cb_bit_6_c,     // 0x71 : BIT 6,C
+    Cpu::cb_bit_6_d,     // 0x72 : BIT 6,D
+    Cpu::cb_bit_6_e,     // 0x73 : BIT 6,E
+    Cpu::cb_bit_6_h,     // 0x74 : BIT 6,H
+    Cpu::cb_bit_6_l,     // 0x75 : BIT 6,L
+    Cpu::cb_bit_6_hl,    // 0x76 : BIT 6,(HL)
+    Cpu::cb_bit_6_a,     // 0x77 : BIT 6,A
+    Cpu::cb_bit_7_b,     // 0x78 : BIT 7,B
+    Cpu::cb_bit_7_c,     // 0x79 : BIT 7,C
+    Cpu::cb_bit_7_d,     // 0x7A : BIT 7,D
+    Cpu::cb_bit_7_e,     // 0x7B : BIT 7,E
+    Cpu::cb_bit_7_h,     // 0x7C : BIT 7,H
+    Cpu::cb_bit_7_l,     // 0x7D : BIT 7,L
+    Cpu::cb_bit_7_hl,    // 0x7E : BIT 7,(HL)
+    Cpu::cb_bit_7_a,     // 0x7F : BIT 7,A
     Cpu::op_placeholder, // 0x80 : RES 0,B
     Cpu::op_placeholder, // 0x81 : RES 0,C
     Cpu::op_placeholder, // 0x82 : RES 0,D
@@ -966,6 +966,15 @@ impl Cpu {
         }
 
         result
+    }
+
+    fn run_bit_u8_and_update_flags(&mut self, operand: u8, bit: u8) {
+        self.status_flags &= STATUS_FLAG_C;
+        self.status_flags |= STATUS_FLAG_H;
+
+        if (operand & bit) == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
     }
 }
 
@@ -3590,5 +3599,469 @@ impl Cpu {
     /// Shift right of the 8-bit register A (2 machine cycles).
     fn cb_srl_a(&mut self) {
         self.registers.register_a = self.run_srl_u8_and_update_flags(self.registers.register_a);
+    }
+
+    /// Opcode 0x40: [BIT 0,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 0 of 8-bit register B is 0 (2 machine cycles).
+    fn cb_bit_0_b(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_b, 0x01);
+    }
+
+    /// Opcode 0x41: [BIT 0,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 0 of 8-bit register C is 0 (2 machine cycles).
+    fn cb_bit_0_c(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_c, 0x01);
+    }
+
+    /// Opcode 0x42: [BIT 0,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 0 of 8-bit register D is 0 (2 machine cycles).
+    fn cb_bit_0_d(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_d, 0x01);
+    }
+
+    /// Opcode 0x43: [BIT 0,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 0 of 8-bit register E is 0 (2 machine cycles).
+    fn cb_bit_0_e(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_e, 0x01);
+    }
+
+    /// Opcode 0x44: [BIT 0,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 0 of 8-bit register H is 0 (2 machine cycles).
+    fn cb_bit_0_h(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_h, 0x01);
+    }
+
+    /// Opcode 0x45: [BIT 0,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 0 of 8-bit register L is 0 (2 machine cycles).
+    fn cb_bit_0_l(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_l, 0x01);
+    }
+
+    /// Opcode 0x46: [BIT 0,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=98)
+    ///
+    /// Test if the bit 0 of the data at the absolute address specified by the 16-bit
+    /// register HL is 0 (3 machine cycles).
+    fn cb_bit_0_hl(&mut self) {
+        let operand = self.read_hl();
+        self.run_bit_u8_and_update_flags(operand, 0x01);
+    }
+
+    /// Opcode 0x47: [BIT 0,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 0 of 8-bit register 1 is 0 (2 machine cycles).
+    fn cb_bit_0_a(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_a, 0x01);
+    }
+
+    /// Opcode 0x48: [BIT 1,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 1 of 8-bit register B is 0 (2 machine cycles).
+    fn cb_bit_1_b(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_b, 0x02);
+    }
+
+    /// Opcode 0x49: [BIT 1,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 1 of 8-bit register C is 0 (2 machine cycles).
+    fn cb_bit_1_c(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_c, 0x02);
+    }
+
+    /// Opcode 0x4A: [BIT 1,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 1 of 8-bit register D is 0 (2 machine cycles).
+    fn cb_bit_1_d(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_d, 0x02);
+    }
+
+    /// Opcode 0x4B: [BIT 1,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 1 of 8-bit register E is 0 (2 machine cycles).
+    fn cb_bit_1_e(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_e, 0x02);
+    }
+
+    /// Opcode 0x4C: [BIT 1,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 1 of 8-bit register H is 0 (2 machine cycles).
+    fn cb_bit_1_h(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_h, 0x02);
+    }
+
+    /// Opcode 0x4D: [BIT 1,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 1 of 8-bit register L is 0 (2 machine cycles).
+    fn cb_bit_1_l(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_l, 0x02);
+    }
+
+    /// Opcode 0x4E: [BIT 1,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=98)
+    ///
+    /// Test if the bit 1 of the data at the absolute address specified by the 16-bit
+    /// register HL is 0 (3 machine cycles).
+    fn cb_bit_1_hl(&mut self) {
+        let operand = self.read_hl();
+        self.run_bit_u8_and_update_flags(operand, 0x02);
+    }
+
+    /// Opcode 0x4F: [BIT 1,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 1 of 8-bit register 1 is 0 (2 machine cycles).
+    fn cb_bit_1_a(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_a, 0x02);
+    }
+
+    /// Opcode 0x50: [BIT 2,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 2 of 8-bit register B is 0 (2 machine cycles).
+    fn cb_bit_2_b(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_b, 0x04);
+    }
+
+    /// Opcode 0x51: [BIT 2,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 2 of 8-bit register C is 0 (2 machine cycles).
+    fn cb_bit_2_c(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_c, 0x04);
+    }
+
+    /// Opcode 0x52: [BIT 2,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 2 of 8-bit register D is 0 (2 machine cycles).
+    fn cb_bit_2_d(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_d, 0x04);
+    }
+
+    /// Opcode 0x53: [BIT 2,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 2 of 8-bit register E is 0 (2 machine cycles).
+    fn cb_bit_2_e(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_e, 0x04);
+    }
+
+    /// Opcode 0x54: [BIT 2,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 2 of 8-bit register H is 0 (2 machine cycles).
+    fn cb_bit_2_h(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_h, 0x04);
+    }
+
+    /// Opcode 0x55: [BIT 2,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 2 of 8-bit register L is 0 (2 machine cycles).
+    fn cb_bit_2_l(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_l, 0x04);
+    }
+
+    /// Opcode 0x56: [BIT 2,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=98)
+    ///
+    /// Test if the bit 2 of the data at the absolute address specified by the 16-bit
+    /// register HL is 0 (3 machine cycles).
+    fn cb_bit_2_hl(&mut self) {
+        let operand = self.read_hl();
+        self.run_bit_u8_and_update_flags(operand, 0x04);
+    }
+
+    /// Opcode 0x57: [BIT 2,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 2 of 8-bit register 1 is 0 (2 machine cycles).
+    fn cb_bit_2_a(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_a, 0x04);
+    }
+
+    /// Opcode 0x58: [BIT 3,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 3 of 8-bit register B is 0 (2 machine cycles).
+    fn cb_bit_3_b(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_b, 0x08);
+    }
+
+    /// Opcode 0x59: [BIT 3,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 3 of 8-bit register C is 0 (2 machine cycles).
+    fn cb_bit_3_c(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_c, 0x08);
+    }
+
+    /// Opcode 0x5A: [BIT 3,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 3 of 8-bit register D is 0 (2 machine cycles).
+    fn cb_bit_3_d(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_d, 0x08);
+    }
+
+    /// Opcode 0x5B: [BIT 3,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 3 of 8-bit register E is 0 (2 machine cycles).
+    fn cb_bit_3_e(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_e, 0x08);
+    }
+
+    /// Opcode 0x5C: [BIT 3,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 3 of 8-bit register H is 0 (2 machine cycles).
+    fn cb_bit_3_h(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_h, 0x08);
+    }
+
+    /// Opcode 0x5D: [BIT 3,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 3 of 8-bit register L is 0 (2 machine cycles).
+    fn cb_bit_3_l(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_l, 0x08);
+    }
+
+    /// Opcode 0x5E: [BIT 3,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=98)
+    ///
+    /// Test if the bit 3 of the data at the absolute address specified by the 16-bit
+    /// register HL is 0 (3 machine cycles).
+    fn cb_bit_3_hl(&mut self) {
+        let operand = self.read_hl();
+        self.run_bit_u8_and_update_flags(operand, 0x08);
+    }
+
+    /// Opcode 0x5F: [BIT 3,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 3 of 8-bit register 1 is 0 (2 machine cycles).
+    fn cb_bit_3_a(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_a, 0x08);
+    }
+
+    /// Opcode 0x60: [BIT 4,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 4 of 8-bit register B is 0 (2 machine cycles).
+    fn cb_bit_4_b(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_b, 0x10);
+    }
+
+    /// Opcode 0x61: [BIT 4,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 4 of 8-bit register C is 0 (2 machine cycles).
+    fn cb_bit_4_c(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_c, 0x10);
+    }
+
+    /// Opcode 0x62: [BIT 4,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 4 of 8-bit register D is 0 (2 machine cycles).
+    fn cb_bit_4_d(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_d, 0x10);
+    }
+
+    /// Opcode 0x63: [BIT 4,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 4 of 8-bit register E is 0 (2 machine cycles).
+    fn cb_bit_4_e(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_e, 0x10);
+    }
+
+    /// Opcode 0x64: [BIT 4,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 4 of 8-bit register H is 0 (2 machine cycles).
+    fn cb_bit_4_h(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_h, 0x10);
+    }
+
+    /// Opcode 0x65: [BIT 4,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 4 of 8-bit register L is 0 (2 machine cycles).
+    fn cb_bit_4_l(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_l, 0x10);
+    }
+
+    /// Opcode 0x66: [BIT 4,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=98)
+    ///
+    /// Test if the bit 4 of the data at the absolute address specified by the 16-bit
+    /// register HL is 0 (3 machine cycles).
+    fn cb_bit_4_hl(&mut self) {
+        let operand = self.read_hl();
+        self.run_bit_u8_and_update_flags(operand, 0x10);
+    }
+
+    /// Opcode 0x67: [BIT 4,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 4 of 8-bit register 1 is 0 (2 machine cycles).
+    fn cb_bit_4_a(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_a, 0x10);
+    }
+
+    /// Opcode 0x68: [BIT 5,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 5 of 8-bit register B is 0 (2 machine cycles).
+    fn cb_bit_5_b(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_b, 0x20);
+    }
+
+    /// Opcode 0x69: [BIT 5,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 5 of 8-bit register C is 0 (2 machine cycles).
+    fn cb_bit_5_c(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_c, 0x20);
+    }
+
+    /// Opcode 0x6A: [BIT 5,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 5 of 8-bit register D is 0 (2 machine cycles).
+    fn cb_bit_5_d(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_d, 0x20);
+    }
+
+    /// Opcode 0x6B: [BIT 5,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 5 of 8-bit register E is 0 (2 machine cycles).
+    fn cb_bit_5_e(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_e, 0x20);
+    }
+
+    /// Opcode 0x6C: [BIT 5,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 5 of 8-bit register H is 0 (2 machine cycles).
+    fn cb_bit_5_h(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_h, 0x20);
+    }
+
+    /// Opcode 0x6D: [BIT 5,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 5 of 8-bit register L is 0 (2 machine cycles).
+    fn cb_bit_5_l(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_l, 0x20);
+    }
+
+    /// Opcode 0x6E: [BIT 5,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=98)
+    ///
+    /// Test if the bit 5 of the data at the absolute address specified by the 16-bit
+    /// register HL is 0 (3 machine cycles).
+    fn cb_bit_5_hl(&mut self) {
+        let operand = self.read_hl();
+        self.run_bit_u8_and_update_flags(operand, 0x20);
+    }
+
+    /// Opcode 0x6F: [BIT 5,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 5 of 8-bit register 1 is 0 (2 machine cycles).
+    fn cb_bit_5_a(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_a, 0x20);
+    }
+
+    /// Opcode 0x70: [BIT 6,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 6 of 8-bit register B is 0 (2 machine cycles).
+    fn cb_bit_6_b(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_b, 0x40);
+    }
+
+    /// Opcode 0x71: [BIT 6,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 6 of 8-bit register C is 0 (2 machine cycles).
+    fn cb_bit_6_c(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_c, 0x40);
+    }
+
+    /// Opcode 0x72: [BIT 6,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 6 of 8-bit register D is 0 (2 machine cycles).
+    fn cb_bit_6_d(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_d, 0x40);
+    }
+
+    /// Opcode 0x73: [BIT 6,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 6 of 8-bit register E is 0 (2 machine cycles).
+    fn cb_bit_6_e(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_e, 0x40);
+    }
+
+    /// Opcode 0x74: [BIT 6,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 6 of 8-bit register H is 0 (2 machine cycles).
+    fn cb_bit_6_h(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_h, 0x40);
+    }
+
+    /// Opcode 0x75: [BIT 6,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 6 of 8-bit register L is 0 (2 machine cycles).
+    fn cb_bit_6_l(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_l, 0x40);
+    }
+
+    /// Opcode 0x76: [BIT 6,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=98)
+    ///
+    /// Test if the bit 6 of the data at the absolute address specified by the 16-bit
+    /// register HL is 0 (3 machine cycles).
+    fn cb_bit_6_hl(&mut self) {
+        let operand = self.read_hl();
+        self.run_bit_u8_and_update_flags(operand, 0x40);
+    }
+
+    /// Opcode 0x77: [BIT 6,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 6 of 8-bit register 1 is 0 (2 machine cycles).
+    fn cb_bit_6_a(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_a, 0x40);
+    }
+
+    /// Opcode 0x78: [BIT 7,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 7 of 8-bit register B is 0 (2 machine cycles).
+    fn cb_bit_7_b(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_b, 0x80);
+    }
+
+    /// Opcode 0x79: [BIT 7,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 7 of 8-bit register C is 0 (2 machine cycles).
+    fn cb_bit_7_c(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_c, 0x80);
+    }
+
+    /// Opcode 0x7A: [BIT 7,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 7 of 8-bit register D is 0 (2 machine cycles).
+    fn cb_bit_7_d(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_d, 0x80);
+    }
+
+    /// Opcode 0x7B: [BIT 7,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 7 of 8-bit register E is 0 (2 machine cycles).
+    fn cb_bit_7_e(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_e, 0x80);
+    }
+
+    /// Opcode 0x7C: [BIT 7,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 7 of 8-bit register H is 0 (2 machine cycles).
+    fn cb_bit_7_h(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_h, 0x80);
+    }
+
+    /// Opcode 0x7D: [BIT 7,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 7 of 8-bit register L is 0 (2 machine cycles).
+    fn cb_bit_7_l(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_l, 0x80);
+    }
+
+    /// Opcode 0x7E: [BIT 7,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=98)
+    ///
+    /// Test if the bit 7 of the data at the absolute address specified by the 16-bit
+    /// register HL is 0 (3 machine cycles).
+    fn cb_bit_7_hl(&mut self) {
+        let operand = self.read_hl();
+        self.run_bit_u8_and_update_flags(operand, 0x80);
+    }
+
+    /// Opcode 0x7F: [BIT 7,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=97)
+    ///
+    /// Test if the bit 7 of 8-bit register 1 is 0 (2 machine cycles).
+    fn cb_bit_7_a(&mut self) {
+        self.run_bit_u8_and_update_flags(self.registers.register_a, 0x80);
     }
 }
