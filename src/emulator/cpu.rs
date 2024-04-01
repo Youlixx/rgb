@@ -388,70 +388,70 @@ const CB_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::cb_bit_7_l,     // 0x7D : BIT 7,L
     Cpu::cb_bit_7_hl,    // 0x7E : BIT 7,(HL)
     Cpu::cb_bit_7_a,     // 0x7F : BIT 7,A
-    Cpu::op_placeholder, // 0x80 : RES 0,B
-    Cpu::op_placeholder, // 0x81 : RES 0,C
-    Cpu::op_placeholder, // 0x82 : RES 0,D
-    Cpu::op_placeholder, // 0x83 : RES 0,E
-    Cpu::op_placeholder, // 0x84 : RES 0,H
-    Cpu::op_placeholder, // 0x85 : RES 0,L
-    Cpu::op_placeholder, // 0x86 : RES 0,(HL)
-    Cpu::op_placeholder, // 0x87 : RES 0,A
-    Cpu::op_placeholder, // 0x88 : RES 1,B
-    Cpu::op_placeholder, // 0x89 : RES 1,C
-    Cpu::op_placeholder, // 0x8A : RES 1,D
-    Cpu::op_placeholder, // 0x8B : RES 1,E
-    Cpu::op_placeholder, // 0x8C : RES 1,H
-    Cpu::op_placeholder, // 0x8D : RES 1,L
-    Cpu::op_placeholder, // 0x8E : RES 1,(HL)
-    Cpu::op_placeholder, // 0x8F : RES 1,A
-    Cpu::op_placeholder, // 0x90 : RES 2,B
-    Cpu::op_placeholder, // 0x91 : RES 2,C
-    Cpu::op_placeholder, // 0x92 : RES 2,D
-    Cpu::op_placeholder, // 0x93 : RES 2,E
-    Cpu::op_placeholder, // 0x94 : RES 2,H
-    Cpu::op_placeholder, // 0x95 : RES 2,L
-    Cpu::op_placeholder, // 0x96 : RES 2,(HL)
-    Cpu::op_placeholder, // 0x97 : RES 2,A
-    Cpu::op_placeholder, // 0x98 : RES 3,B
-    Cpu::op_placeholder, // 0x99 : RES 3,C
-    Cpu::op_placeholder, // 0x9A : RES 3,D
-    Cpu::op_placeholder, // 0x9B : RES 3,E
-    Cpu::op_placeholder, // 0x9C : RES 3,H
-    Cpu::op_placeholder, // 0x9D : RES 3,L
-    Cpu::op_placeholder, // 0x9E : RES 3,(HL)
-    Cpu::op_placeholder, // 0x9F : RES 3,A
-    Cpu::op_placeholder, // 0xA0 : RES 4,B
-    Cpu::op_placeholder, // 0xA1 : RES 4,C
-    Cpu::op_placeholder, // 0xA2 : RES 4,D
-    Cpu::op_placeholder, // 0xA3 : RES 4,E
-    Cpu::op_placeholder, // 0xA4 : RES 4,H
-    Cpu::op_placeholder, // 0xA5 : RES 4,L
-    Cpu::op_placeholder, // 0xA6 : RES 4,(HL)
-    Cpu::op_placeholder, // 0xA7 : RES 4,A
-    Cpu::op_placeholder, // 0xA8 : RES 5,B
-    Cpu::op_placeholder, // 0xA9 : RES 5,C
-    Cpu::op_placeholder, // 0xAA : RES 5,D
-    Cpu::op_placeholder, // 0xAB : RES 5,E
-    Cpu::op_placeholder, // 0xAC : RES 5,H
-    Cpu::op_placeholder, // 0xAD : RES 5,L
-    Cpu::op_placeholder, // 0xAE : RES 5,(HL)
-    Cpu::op_placeholder, // 0xAF : RES 5,A
-    Cpu::op_placeholder, // 0xB0 : RES 6,B
-    Cpu::op_placeholder, // 0xB1 : RES 6,C
-    Cpu::op_placeholder, // 0xB2 : RES 6,D
-    Cpu::op_placeholder, // 0xB3 : RES 6,E
-    Cpu::op_placeholder, // 0xB4 : RES 6,H
-    Cpu::op_placeholder, // 0xB5 : RES 6,L
-    Cpu::op_placeholder, // 0xB6 : RES 6,(HL)
-    Cpu::op_placeholder, // 0xB7 : RES 6,A
-    Cpu::op_placeholder, // 0xB8 : RES 7,B
-    Cpu::op_placeholder, // 0xB9 : RES 7,C
-    Cpu::op_placeholder, // 0xBA : RES 7,D
-    Cpu::op_placeholder, // 0xBB : RES 7,E
-    Cpu::op_placeholder, // 0xBC : RES 7,H
-    Cpu::op_placeholder, // 0xBD : RES 7,L
-    Cpu::op_placeholder, // 0xBE : RES 7,(HL)
-    Cpu::op_placeholder, // 0xBF : RES 7,A
+    Cpu::cb_res_0_b,     // 0x80 : RES 0,B
+    Cpu::cb_res_0_c,     // 0x81 : RES 0,C
+    Cpu::cb_res_0_d,     // 0x82 : RES 0,D
+    Cpu::cb_res_0_e,     // 0x83 : RES 0,E
+    Cpu::cb_res_0_h,     // 0x84 : RES 0,H
+    Cpu::cb_res_0_l,     // 0x85 : RES 0,L
+    Cpu::cb_res_0_hl,    // 0x86 : RES 0,(HL)
+    Cpu::cb_res_0_a,     // 0x87 : RES 0,A
+    Cpu::cb_res_1_b,     // 0x88 : RES 1,B
+    Cpu::cb_res_1_c,     // 0x89 : RES 1,C
+    Cpu::cb_res_1_d,     // 0x8A : RES 1,D
+    Cpu::cb_res_1_e,     // 0x8B : RES 1,E
+    Cpu::cb_res_1_h,     // 0x8C : RES 1,H
+    Cpu::cb_res_1_l,     // 0x8D : RES 1,L
+    Cpu::cb_res_1_hl,    // 0x8E : RES 1,(HL)
+    Cpu::cb_res_1_a,     // 0x8F : RES 1,A
+    Cpu::cb_res_2_b,     // 0x90 : RES 2,B
+    Cpu::cb_res_2_c,     // 0x91 : RES 2,C
+    Cpu::cb_res_2_d,     // 0x92 : RES 2,D
+    Cpu::cb_res_2_e,     // 0x93 : RES 2,E
+    Cpu::cb_res_2_h,     // 0x94 : RES 2,H
+    Cpu::cb_res_2_l,     // 0x95 : RES 2,L
+    Cpu::cb_res_2_hl,    // 0x96 : RES 2,(HL)
+    Cpu::cb_res_2_a,     // 0x97 : RES 2,A
+    Cpu::cb_res_3_b,     // 0x98 : RES 3,B
+    Cpu::cb_res_3_c,     // 0x99 : RES 3,C
+    Cpu::cb_res_3_d,     // 0x9A : RES 3,D
+    Cpu::cb_res_3_e,     // 0x9B : RES 3,E
+    Cpu::cb_res_3_h,     // 0x9C : RES 3,H
+    Cpu::cb_res_3_l,     // 0x9D : RES 3,L
+    Cpu::cb_res_3_hl,    // 0x9E : RES 3,(HL)
+    Cpu::cb_res_3_a,     // 0x9F : RES 3,A
+    Cpu::cb_res_4_b,     // 0xA0 : RES 4,B
+    Cpu::cb_res_4_c,     // 0xA1 : RES 4,C
+    Cpu::cb_res_4_d,     // 0xA2 : RES 4,D
+    Cpu::cb_res_4_e,     // 0xA3 : RES 4,E
+    Cpu::cb_res_4_h,     // 0xA4 : RES 4,H
+    Cpu::cb_res_4_l,     // 0xA5 : RES 4,L
+    Cpu::cb_res_4_hl,    // 0xA6 : RES 4,(HL)
+    Cpu::cb_res_4_a,     // 0xA7 : RES 4,A
+    Cpu::cb_res_5_b,     // 0xA8 : RES 5,B
+    Cpu::cb_res_5_c,     // 0xA9 : RES 5,C
+    Cpu::cb_res_5_d,     // 0xAA : RES 5,D
+    Cpu::cb_res_5_e,     // 0xAB : RES 5,E
+    Cpu::cb_res_5_h,     // 0xAC : RES 5,H
+    Cpu::cb_res_5_l,     // 0xAD : RES 5,L
+    Cpu::cb_res_5_hl,    // 0xAE : RES 5,(HL)
+    Cpu::cb_res_5_a,     // 0xAF : RES 5,A
+    Cpu::cb_res_6_b,     // 0xB0 : RES 6,B
+    Cpu::cb_res_6_c,     // 0xB1 : RES 6,C
+    Cpu::cb_res_6_d,     // 0xB2 : RES 6,D
+    Cpu::cb_res_6_e,     // 0xB3 : RES 6,E
+    Cpu::cb_res_6_h,     // 0xB4 : RES 6,H
+    Cpu::cb_res_6_l,     // 0xB5 : RES 6,L
+    Cpu::cb_res_6_hl,    // 0xB6 : RES 6,(HL)
+    Cpu::cb_res_6_a,     // 0xB7 : RES 6,A
+    Cpu::cb_res_7_b,     // 0xB8 : RES 7,B
+    Cpu::cb_res_7_c,     // 0xB9 : RES 7,C
+    Cpu::cb_res_7_d,     // 0xBA : RES 7,D
+    Cpu::cb_res_7_e,     // 0xBB : RES 7,E
+    Cpu::cb_res_7_h,     // 0xBC : RES 7,H
+    Cpu::cb_res_7_l,     // 0xBD : RES 7,L
+    Cpu::cb_res_7_hl,    // 0xBE : RES 7,(HL)
+    Cpu::cb_res_7_a,     // 0xBF : RES 7,A
     Cpu::op_placeholder, // 0xC0 : SET 0,B
     Cpu::op_placeholder, // 0xC1 : SET 0,C
     Cpu::op_placeholder, // 0xC2 : SET 0,D
@@ -4063,5 +4063,469 @@ impl Cpu {
     /// Test if the bit 7 of 8-bit register 1 is 0 (2 machine cycles).
     fn cb_bit_7_a(&mut self) {
         self.run_bit_u8_and_update_flags(self.registers.register_a, 0x80);
+    }
+
+    /// Opcode 0x80: [RES 0,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 0 of 8-bit register B (2 machine cycles).
+    fn cb_res_0_b(&mut self) {
+        self.registers.register_b &= 0xFE;
+    }
+
+    /// Opcode 0x81: [RES 0,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 0 of 8-bit register C (2 machine cycles).
+    fn cb_res_0_c(&mut self) {
+        self.registers.register_c &= 0xFE;
+    }
+
+    /// Opcode 0x82: [RES 0,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 0 of 8-bit register D (2 machine cycles).
+    fn cb_res_0_d(&mut self) {
+        self.registers.register_d &= 0xFE;
+    }
+
+    /// Opcode 0x83: [RES 0,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 0 of 8-bit register E (2 machine cycles).
+    fn cb_res_0_e(&mut self) {
+        self.registers.register_e &= 0xFE;
+    }
+
+    /// Opcode 0x84: [RES 0,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 0 of 8-bit register H (2 machine cycles).
+    fn cb_res_0_h(&mut self) {
+        self.registers.register_h &= 0xFE;
+    }
+
+    /// Opcode 0x85: [RES 0,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 0 of 8-bit register L (2 machine cycles).
+    fn cb_res_0_l(&mut self) {
+        self.registers.register_l &= 0xFE;
+    }
+
+    /// Opcode 0x86: [RES 0,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=100)
+    ///
+    /// Reset bit 0 of the data at the absolute address specified by the 16-bit register HL
+    /// (3 machine cycles).
+    fn cb_res_0_hl(&mut self) {
+        let operand = self.read_hl();
+        self.write_hl(operand & 0xFE);
+    }
+
+    /// Opcode 0x87: [RES 0,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 0 of 8-bit register A (2 machine cycles).
+    fn cb_res_0_a(&mut self) {
+        self.registers.register_a &= 0xFE;
+    }
+
+    /// Opcode 0x88: [RES 1,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 1 of 8-bit register B (2 machine cycles).
+    fn cb_res_1_b(&mut self) {
+        self.registers.register_b &= 0xFD;
+    }
+
+    /// Opcode 0x89: [RES 1,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 1 of 8-bit register C (2 machine cycles).
+    fn cb_res_1_c(&mut self) {
+        self.registers.register_c &= 0xFD;
+    }
+
+    /// Opcode 0x8A: [RES 1,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 1 of 8-bit register D (2 machine cycles).
+    fn cb_res_1_d(&mut self) {
+        self.registers.register_d &= 0xFD;
+    }
+
+    /// Opcode 0x8B: [RES 1,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 1 of 8-bit register E (2 machine cycles).
+    fn cb_res_1_e(&mut self) {
+        self.registers.register_e &= 0xFD;
+    }
+
+    /// Opcode 0x8C: [RES 1,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 1 of 8-bit register H (2 machine cycles).
+    fn cb_res_1_h(&mut self) {
+        self.registers.register_h &= 0xFD;
+    }
+
+    /// Opcode 0x8D: [RES 1,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 1 of 8-bit register L (2 machine cycles).
+    fn cb_res_1_l(&mut self) {
+        self.registers.register_l &= 0xFD;
+    }
+
+    /// Opcode 0x8E: [RES 1,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=100)
+    ///
+    /// Reset bit 1 of the data at the absolute address specified by the 16-bit register HL
+    /// (3 machine cycles).
+    fn cb_res_1_hl(&mut self) {
+        let operand = self.read_hl();
+        self.write_hl(operand & 0xFD);
+    }
+
+    /// Opcode 0x8F: [RES 1,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 1 of 8-bit register A (2 machine cycles).
+    fn cb_res_1_a(&mut self) {
+        self.registers.register_a &= 0xFD;
+    }
+
+    /// Opcode 0x90: [RES 2,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 2 of 8-bit register B (2 machine cycles).
+    fn cb_res_2_b(&mut self) {
+        self.registers.register_b &= 0xFB;
+    }
+
+    /// Opcode 0x91: [RES 2,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 2 of 8-bit register C (2 machine cycles).
+    fn cb_res_2_c(&mut self) {
+        self.registers.register_c &= 0xFB;
+    }
+
+    /// Opcode 0x92: [RES 2,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 2 of 8-bit register D (2 machine cycles).
+    fn cb_res_2_d(&mut self) {
+        self.registers.register_d &= 0xFB;
+    }
+
+    /// Opcode 0x93: [RES 2,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 2 of 8-bit register E (2 machine cycles).
+    fn cb_res_2_e(&mut self) {
+        self.registers.register_e &= 0xFB;
+    }
+
+    /// Opcode 0x94: [RES 2,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 2 of 8-bit register H (2 machine cycles).
+    fn cb_res_2_h(&mut self) {
+        self.registers.register_h &= 0xFB;
+    }
+
+    /// Opcode 0x95: [RES 2,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 2 of 8-bit register L (2 machine cycles).
+    fn cb_res_2_l(&mut self) {
+        self.registers.register_l &= 0xFB;
+    }
+
+    /// Opcode 0x96: [RES 2,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=100)
+    ///
+    /// Reset bit 2 of the data at the absolute address specified by the 16-bit register HL
+    /// (3 machine cycles).
+    fn cb_res_2_hl(&mut self) {
+        let operand = self.read_hl();
+        self.write_hl(operand & 0xFB);
+    }
+
+    /// Opcode 0x97: [RES 2,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 2 of 8-bit register A (2 machine cycles).
+    fn cb_res_2_a(&mut self) {
+        self.registers.register_a &= 0xFB;
+    }
+
+    /// Opcode 0x98: [RES 3,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 3 of 8-bit register B (2 machine cycles).
+    fn cb_res_3_b(&mut self) {
+        self.registers.register_b &= 0xF7;
+    }
+
+    /// Opcode 0x99: [RES 3,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 3 of 8-bit register C (2 machine cycles).
+    fn cb_res_3_c(&mut self) {
+        self.registers.register_c &= 0xF7;
+    }
+
+    /// Opcode 0x9A: [RES 3,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 3 of 8-bit register D (2 machine cycles).
+    fn cb_res_3_d(&mut self) {
+        self.registers.register_d &= 0xF7;
+    }
+
+    /// Opcode 0x9B: [RES 3,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 3 of 8-bit register E (2 machine cycles).
+    fn cb_res_3_e(&mut self) {
+        self.registers.register_e &= 0xF7;
+    }
+
+    /// Opcode 0x9C: [RES 3,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 3 of 8-bit register H (2 machine cycles).
+    fn cb_res_3_h(&mut self) {
+        self.registers.register_h &= 0xF7;
+    }
+
+    /// Opcode 0x9D: [RES 3,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 3 of 8-bit register L (2 machine cycles).
+    fn cb_res_3_l(&mut self) {
+        self.registers.register_l &= 0xF7;
+    }
+
+    /// Opcode 0x9E: [RES 3,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=100)
+    ///
+    /// Reset bit 3 of the data at the absolute address specified by the 16-bit register HL
+    /// (3 machine cycles).
+    fn cb_res_3_hl(&mut self) {
+        let operand = self.read_hl();
+        self.write_hl(operand & 0xF7);
+    }
+
+    /// Opcode 0x9F: [RES 3,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 3 of 8-bit register A (2 machine cycles).
+    fn cb_res_3_a(&mut self) {
+        self.registers.register_a &= 0xF7;
+    }
+
+    /// Opcode 0xA0: [RES 4,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 4 of 8-bit register B (2 machine cycles).
+    fn cb_res_4_b(&mut self) {
+        self.registers.register_b &= 0xEF;
+    }
+
+    /// Opcode 0xA1: [RES 4,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 4 of 8-bit register C (2 machine cycles).
+    fn cb_res_4_c(&mut self) {
+        self.registers.register_c &= 0xEF;
+    }
+
+    /// Opcode 0xA2: [RES 4,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 4 of 8-bit register D (2 machine cycles).
+    fn cb_res_4_d(&mut self) {
+        self.registers.register_d &= 0xEF;
+    }
+
+    /// Opcode 0xA3: [RES 4,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 4 of 8-bit register E (2 machine cycles).
+    fn cb_res_4_e(&mut self) {
+        self.registers.register_e &= 0xEF;
+    }
+
+    /// Opcode 0xA4: [RES 4,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 4 of 8-bit register H (2 machine cycles).
+    fn cb_res_4_h(&mut self) {
+        self.registers.register_h &= 0xEF;
+    }
+
+    /// Opcode 0xA5: [RES 4,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 4 of 8-bit register L (2 machine cycles).
+    fn cb_res_4_l(&mut self) {
+        self.registers.register_l &= 0xEF;
+    }
+
+    /// Opcode 0xA6: [RES 4,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=100)
+    ///
+    /// Reset bit 4 of the data at the absolute address specified by the 16-bit register HL
+    /// (3 machine cycles).
+    fn cb_res_4_hl(&mut self) {
+        let operand = self.read_hl();
+        self.write_hl(operand & 0xEF);
+    }
+
+    /// Opcode 0xA7: [RES 4,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 4 of 8-bit register A (2 machine cycles).
+    fn cb_res_4_a(&mut self) {
+        self.registers.register_a &= 0xEF;
+    }
+
+    /// Opcode 0xA8: [RES 5,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 5 of 8-bit register B (2 machine cycles).
+    fn cb_res_5_b(&mut self) {
+        self.registers.register_b &= 0xDF;
+    }
+
+    /// Opcode 0xA9: [RES 5,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 5 of 8-bit register C (2 machine cycles).
+    fn cb_res_5_c(&mut self) {
+        self.registers.register_c &= 0xDF;
+    }
+
+    /// Opcode 0xAA: [RES 5,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 5 of 8-bit register D (2 machine cycles).
+    fn cb_res_5_d(&mut self) {
+        self.registers.register_d &= 0xDF;
+    }
+
+    /// Opcode 0xAB: [RES 5,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 5 of 8-bit register E (2 machine cycles).
+    fn cb_res_5_e(&mut self) {
+        self.registers.register_e &= 0xDF;
+    }
+
+    /// Opcode 0xAC: [RES 5,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 5 of 8-bit register H (2 machine cycles).
+    fn cb_res_5_h(&mut self) {
+        self.registers.register_h &= 0xDF;
+    }
+
+    /// Opcode 0xAD: [RES 5,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 5 of 8-bit register L (2 machine cycles).
+    fn cb_res_5_l(&mut self) {
+        self.registers.register_l &= 0xDF;
+    }
+
+    /// Opcode 0xAE: [RES 5,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=100)
+    ///
+    /// Reset bit 5 of the data at the absolute address specified by the 16-bit register HL
+    /// (3 machine cycles).
+    fn cb_res_5_hl(&mut self) {
+        let operand = self.read_hl();
+        self.write_hl(operand & 0xDF);
+    }
+
+    /// Opcode 0xAF: [RES 5,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 5 of 8-bit register A (2 machine cycles).
+    fn cb_res_5_a(&mut self) {
+        self.registers.register_a &= 0xDF;
+    }
+
+    /// Opcode 0xB0: [RES 6,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 6 of 8-bit register B (2 machine cycles).
+    fn cb_res_6_b(&mut self) {
+        self.registers.register_b &= 0xBF;
+    }
+
+    /// Opcode 0xB1: [RES 6,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 6 of 8-bit register C (2 machine cycles).
+    fn cb_res_6_c(&mut self) {
+        self.registers.register_c &= 0xBF;
+    }
+
+    /// Opcode 0xB2: [RES 6,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 6 of 8-bit register D (2 machine cycles).
+    fn cb_res_6_d(&mut self) {
+        self.registers.register_d &= 0xBF;
+    }
+
+    /// Opcode 0xB3: [RES 6,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 6 of 8-bit register E (2 machine cycles).
+    fn cb_res_6_e(&mut self) {
+        self.registers.register_e &= 0xBF;
+    }
+
+    /// Opcode 0xB4: [RES 6,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 6 of 8-bit register H (2 machine cycles).
+    fn cb_res_6_h(&mut self) {
+        self.registers.register_h &= 0xBF;
+    }
+
+    /// Opcode 0xB5: [RES 6,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 6 of 8-bit register L (2 machine cycles).
+    fn cb_res_6_l(&mut self) {
+        self.registers.register_l &= 0xBF;
+    }
+
+    /// Opcode 0xB6: [RES 6,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=100)
+    ///
+    /// Reset bit 6 of the data at the absolute address specified by the 16-bit register HL
+    /// (3 machine cycles).
+    fn cb_res_6_hl(&mut self) {
+        let operand = self.read_hl();
+        self.write_hl(operand & 0xBF);
+    }
+
+    /// Opcode 0xB7: [RES 6,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 6 of 8-bit register A (2 machine cycles).
+    fn cb_res_6_a(&mut self) {
+        self.registers.register_a &= 0xBF;
+    }
+
+    /// Opcode 0xB8: [RES 7,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 7 of 8-bit register B (2 machine cycles).
+    fn cb_res_7_b(&mut self) {
+        self.registers.register_b &= 0x7F;
+    }
+
+    /// Opcode 0xB9: [RES 7,C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 7 of 8-bit register C (2 machine cycles).
+    fn cb_res_7_c(&mut self) {
+        self.registers.register_c &= 0x7F;
+    }
+
+    /// Opcode 0xBA: [RES 7,D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 7 of 8-bit register D (2 machine cycles).
+    fn cb_res_7_d(&mut self) {
+        self.registers.register_d &= 0x7F;
+    }
+
+    /// Opcode 0xBB: [RES 7,E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 7 of 8-bit register E (2 machine cycles).
+    fn cb_res_7_e(&mut self) {
+        self.registers.register_e &= 0x7F;
+    }
+
+    /// Opcode 0xBC: [RES 7,H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 7 of 8-bit register H (2 machine cycles).
+    fn cb_res_7_h(&mut self) {
+        self.registers.register_h &= 0x7F;
+    }
+
+    /// Opcode 0xBD: [RES 7,L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 7 of 8-bit register L (2 machine cycles).
+    fn cb_res_7_l(&mut self) {
+        self.registers.register_l &= 0x7F;
+    }
+
+    /// Opcode 0xBE: [RES 7,(HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=100)
+    ///
+    /// Reset bit 7 of the data at the absolute address specified by the 16-bit register HL
+    /// (3 machine cycles).
+    fn cb_res_7_hl(&mut self) {
+        let operand = self.read_hl();
+        self.write_hl(operand & 0x7F);
+    }
+
+    /// Opcode 0xBF: [RES 7,A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=99)
+    ///
+    /// Reset bit 7 of 8-bit register A (2 machine cycles).
+    fn cb_res_7_a(&mut self) {
+        self.registers.register_a &= 0x7F;
     }
 }
