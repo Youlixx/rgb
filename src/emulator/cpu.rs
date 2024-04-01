@@ -3026,7 +3026,7 @@ impl Cpu {
     /// F register value, so all flags are changed based on the 8-bit data that is read
     /// from memory (3 machine cycles).
     fn op_pop_af(&mut self) {
-        self.status_flags = self.stack_pop_u8();
+        self.status_flags = self.stack_pop_u8() & 0xF0;
         self.registers.register_a = self.stack_pop_u8();
     }
 
