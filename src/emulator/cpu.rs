@@ -204,7 +204,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ret_z,       // 0xC8 : RET Z
     Cpu::op_ret,         // 0xC9 : RET
     Cpu::op_jp_z_a16,    // 0xCA : JP Z,a16
-    Cpu::op_placeholder, // 0xCB : PREFIX CB
+    Cpu::op_prefix_cb,   // 0xCB : PREFIX CB
     Cpu::op_call_z_a16,  // 0xCC : CALL Z,a16
     Cpu::op_call_a16,    // 0xCD : CALL a16
     Cpu::op_adc_a_u8,    // 0xCE : ADC A,d8
@@ -212,7 +212,7 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ret_nc,      // 0xD0 : RET NC
     Cpu::op_pop_de,      // 0xD1 : POP DE
     Cpu::op_jp_nc_a16,   // 0xD2 : JP NC,a16
-    Cpu::op_placeholder, // 0xD3 : undefined
+    Cpu::op_nop,         // 0xD3 : undefined
     Cpu::op_call_nc_a16, // 0xD4 : CALL NC,a16
     Cpu::op_push_de,     // 0xD5 : PUSH DE
     Cpu::op_sub_a_u8,    // 0xD6 : SUB d8
@@ -220,32 +220,32 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ret_c,       // 0xD8 : RET C
     Cpu::op_reti,        // 0xD9 : RETI
     Cpu::op_jp_c_a16,    // 0xDA : JP C,a16
-    Cpu::op_placeholder, // 0xDB : undefined
+    Cpu::op_nop,         // 0xDB : undefined
     Cpu::op_call_c_a16,  // 0xDC : CALL C,a16
-    Cpu::op_placeholder, // 0xDD : undefined
+    Cpu::op_nop,         // 0xDD : undefined
     Cpu::op_sbc_a_u8,    // 0xDE : SBC A,d8
     Cpu::op_rst_18h,     // 0xDF : RST 18H
     Cpu::op_ldh_a8_a,    // 0xE0 : LDH (a8),A
     Cpu::op_pop_hl,      // 0xE1 : POP HL
     Cpu::ldh_c_a,        // 0xE2 : LDH (C),A
-    Cpu::op_placeholder, // 0xE3 : undefined
-    Cpu::op_placeholder, // 0xE4 : undefined
+    Cpu::op_nop,         // 0xE3 : undefined
+    Cpu::op_nop,         // 0xE4 : undefined
     Cpu::op_push_hl,     // 0xE5 : PUSH HL
     Cpu::op_and_a_u8,    // 0xE6 : AND d8
     Cpu::op_rst_20h,     // 0xE7 : RST 20H
     Cpu::op_add_sp_r8,   // 0xE8 : ADD SP,r8
     Cpu::op_jp_hl,       // 0xE9 : JP (HL)
     Cpu::op_ld_a16_a,    // 0xEA : LD (a16),A
-    Cpu::op_placeholder, // 0xEB : undefined
-    Cpu::op_placeholder, // 0xEC : undefined
-    Cpu::op_placeholder, // 0xED : undefined
+    Cpu::op_nop,         // 0xEB : undefined
+    Cpu::op_nop,         // 0xEC : undefined
+    Cpu::op_nop,         // 0xED : undefined
     Cpu::op_xor_a_u8,    // 0xEE : XOR d8
     Cpu::op_rst_28h,     // 0xEF : RST 28H
     Cpu::op_ldh_a_a8,    // 0xF0 : LDH A,(a8)
     Cpu::op_pop_af,      // 0xF1 : POP AF
     Cpu::ldh_a_c,        // 0xF2 : LDH A,(C)
     Cpu::op_di,          // 0xF3 : DI
-    Cpu::op_placeholder, // 0xF4 : undefined
+    Cpu::op_nop,         // 0xF4 : undefined
     Cpu::op_push_af,     // 0xF5 : PUSH AF
     Cpu::op_or_a_u8,     // 0xF6 : OR d8
     Cpu::op_rst_30h,     // 0xF7 : RST 30H
@@ -253,8 +253,8 @@ const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_ld_sp_hl,    // 0xF9 : LD SP,HL
     Cpu::op_ld_a_a16,    // 0xFA : LD A,(a16)
     Cpu::op_ei,          // 0xFB : EI
-    Cpu::op_placeholder, // 0xFC : undefined
-    Cpu::op_placeholder, // 0xFD : undefined
+    Cpu::op_nop,         // 0xFC : undefined
+    Cpu::op_nop,         // 0xFD : undefined
     Cpu::op_cp_a_u8,     // 0xFE : CP d8
     Cpu::op_rst_38h,     // 0xFF : RST 38H
 ];
@@ -599,8 +599,6 @@ impl Cpu {
 
     pub fn tick(&mut self) {
         OP_CODE_FUNCTION_TABLE[self.fetch_u8() as usize](self);
-        // TODO to remove
-        CB_CODE_FUNCTION_TABLE[self.fetch_u8() as usize](self);
     }
 
     fn read_hl(&mut self) -> u8 {
@@ -2688,6 +2686,14 @@ impl Cpu {
             // TODO: add extra cycle
             self.program_counter = address;
         }
+    }
+
+    /// Opcode 0xCB: [PREFIX CB]
+    ///
+    /// Perform a CB prefixed opcode (2/3/4 machine cycles).
+    fn op_prefix_cb(&mut self) {
+        let cb_code = self.fetch_u8();
+        CB_CODE_FUNCTION_TABLE[cb_code as usize](self);
     }
 
     /// Opcode 0xCC: [CALL Z,a16](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=112)
