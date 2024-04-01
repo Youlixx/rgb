@@ -5069,16 +5069,70 @@ mod tests {
     }
 
     #[test]
-    fn test_rom_ld() {
+    fn test_rom_special() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/01-special.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_interrupts() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/02-interrupts.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_op_sp_hl() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/03-op sp,hl.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_op_r_imm() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/04-op r,imm.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_op_rp() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/05-op rp.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_ld_r_r() {
         let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/06-ld r,r.gb");
         run_test_rom(rom);
     }
 
     #[test]
-    fn test_rom_jp() {
+    fn test_rom_jr_jp_call_ret_rst() {
         let rom = include_bytes!(
             "../../roms/gb-test-roms/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb"
         );
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_misc() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/08-misc instrs.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_op_r_r() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/09-op r,r.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_bit() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/10-bit ops.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_op_a_hl() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/11-op a,(hl).gb");
         run_test_rom(rom);
     }
 }
