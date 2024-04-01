@@ -5007,3 +5007,64 @@ impl Cpu {
         self.registers.register_a |= 0x80;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{cell::RefCell, rc::Rc};
+
+    use crate::emulator::memory::Memory;
+
+    use super::Cpu;
+
+    struct TestMemoryController {
+        memory: Vec<u8>,
+        log: String,
+        completed: bool,
+    }
+
+    impl TestMemoryController {
+        fn new(rom: &[u8]) -> Self {
+            let mut memory = vec![0; 0x10000];
+            memory[..rom.len()].copy_from_slice(rom);
+
+            Self {
+                memory,
+                log: String::new(),
+                completed: false,
+            }
+        }
+    }
+
+    impl Memory for TestMemoryController {
+        fn read(&mut self, address: u16) -> u8 {
+            self.memory[address as usize]
+        }
+
+        fn write(&mut self, address: u16, value: u8) {
+            if address == 0xFF01 {
+                self.log.push(value as char);
+
+                if self.log.ends_with("Passed") || self.log.ends_with("Failed") {
+                    self.completed = true;
+                }
+            }
+
+            self.memory[address as usize] = value;
+        }
+    }
+
+    fn run_test_rom(rom: &[u8]) {
+        let memory = Rc::new(RefCell::new(TestMemoryController::new(rom)));
+        let mut cpu = Cpu::new(memory.clone());
+
+        while !memory.borrow().completed {
+            cpu.tick();
+        }
+
+        let log = memory.borrow().log.clone();
+
+        if log.ends_with("Failed") {
+            panic!("Test failed\n{}", log);
+        }
+    }
+}
