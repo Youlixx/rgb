@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use super::memory::Memory;
 
 const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
@@ -575,7 +577,8 @@ impl CpuRegisters {
 }
 
 pub struct Cpu {
-    memory: Box<dyn Memory>,
+    // memory: Box<dyn Memory>,
+    memory: Rc<RefCell<dyn Memory>>,
     program_counter: u16,
 
     registers: CpuRegisters,
@@ -586,10 +589,10 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(memory: Box<dyn Memory>) -> Self {
+    pub fn new(memory: Rc<RefCell<dyn Memory>>) -> Self {
         Self {
             memory,
-            program_counter: 0,
+            program_counter: 0x0100,
             registers: CpuRegisters::new(),
             status_flags: 0,
             stack_pointer: 0,
@@ -598,15 +601,24 @@ impl Cpu {
     }
 
     pub fn tick(&mut self) {
-        OP_CODE_FUNCTION_TABLE[self.fetch_u8() as usize](self);
+        let opcode = self.fetch_u8();
+        OP_CODE_FUNCTION_TABLE[opcode as usize](self);
+    }
+
+    fn read(&mut self, address: u16) -> u8 {
+        self.memory.borrow_mut().read(address)
+    }
+
+    fn write(&mut self, address: u16, value: u8) {
+        self.memory.borrow_mut().write(address, value);
     }
 
     fn read_hl(&mut self) -> u8 {
-        self.memory.read(self.registers.hl())
+        self.read(self.registers.hl())
     }
 
     fn write_hl(&mut self, value: u8) {
-        self.memory.write(self.registers.hl(), value);
+        self.write(self.registers.hl(), value);
     }
 
     fn op_placeholder(&mut self) {
@@ -614,7 +626,7 @@ impl Cpu {
     }
 
     fn fetch_u8(&mut self) -> u8 {
-        let value = self.memory.read(self.program_counter);
+        let value = self.read(self.program_counter);
         self.program_counter += 1;
 
         value
@@ -628,7 +640,7 @@ impl Cpu {
     }
 
     fn stack_pop_u8(&mut self) -> u8 {
-        let value = self.memory.read(self.stack_pointer);
+        let value = self.read(self.stack_pointer);
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
 
         value
@@ -636,7 +648,7 @@ impl Cpu {
 
     fn stack_push_u8(&mut self, value: u8) {
         self.stack_pointer = self.stack_pointer.wrapping_sub(1);
-        self.memory.write(self.stack_pointer, value);
+        self.write(self.stack_pointer, value);
     }
 
     fn stack_pop_u16(&mut self) -> u16 {
@@ -998,8 +1010,7 @@ impl Cpu {
     /// Load to the absolute address specified by the 16-bit register BC, data from the
     /// 8-bit A register (2 machine cycles).
     fn op_ld_bc_a(&mut self) {
-        self.memory
-            .write(self.registers.bc(), self.registers.register_a);
+        self.write(self.registers.bc(), self.registers.register_a);
     }
 
     /// Opcode 0x03: [INC BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=72)
@@ -1053,10 +1064,8 @@ impl Cpu {
     fn op_ld_u16_sp(&mut self) {
         let address = self.fetch_u16();
 
-        self.memory
-            .write(address, (self.stack_pointer & 0xFF) as u8);
-        self.memory
-            .write(address + 1, (self.stack_pointer >> 8) as u8);
+        self.write(address, (self.stack_pointer & 0xFF) as u8);
+        self.write(address + 1, (self.stack_pointer >> 8) as u8);
     }
 
     /// Opcode 0x09: [ADD HL,BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
@@ -1072,7 +1081,7 @@ impl Cpu {
     /// Load to the 8-bit A register, data from the absolute address specified by the
     /// 16-bit register BC (2 machine cycles).
     fn op_ld_a_bc(&mut self) {
-        self.registers.register_a = self.memory.read(self.registers.bc());
+        self.registers.register_a = self.read(self.registers.bc());
     }
 
     /// Opcode 0x0B: [DEC BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=73)
@@ -1133,8 +1142,7 @@ impl Cpu {
     /// Load to the absolute address specified by the 16-bit register DE, data from the
     /// 8-bit A register (2 machine cycles).
     fn op_ld_de_a(&mut self) {
-        self.memory
-            .write(self.registers.de(), self.registers.register_a);
+        self.write(self.registers.de(), self.registers.register_a);
     }
 
     /// Opcode 0x13: [INC DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=72)
@@ -1206,7 +1214,7 @@ impl Cpu {
     /// Load to the 8-bit A register, data from the absolute address specified by the
     /// 16-bit register DE (2 machine cycles).
     fn op_ld_a_de(&mut self) {
-        self.registers.register_a = self.memory.read(self.registers.de());
+        self.registers.register_a = self.read(self.registers.de());
     }
 
     /// Opcode 0x1B: [DEC DE](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=73)
@@ -1287,7 +1295,7 @@ impl Cpu {
     /// machine cycles).
     fn op_ld_hl_inc_a(&mut self) {
         let address = self.registers.hl();
-        self.memory.write(address, self.registers.register_a);
+        self.write(address, self.registers.register_a);
         self.registers.set_hl(address + 1);
     }
 
@@ -1390,7 +1398,7 @@ impl Cpu {
     /// machine cycles).
     fn op_ld_a_hl_inc(&mut self) {
         let address = self.registers.hl();
-        self.registers.register_a = self.memory.read(address);
+        self.registers.register_a = self.read(address);
         self.registers.set_hl(address + 1);
     }
 
@@ -1463,7 +1471,7 @@ impl Cpu {
     /// machine cycles).
     fn op_ld_hl_dec_a(&mut self) {
         let address = self.registers.hl();
-        self.memory.write(address, self.registers.register_a);
+        self.write(address, self.registers.register_a);
         self.registers.set_hl(address - 1);
     }
 
@@ -1481,9 +1489,9 @@ impl Cpu {
     /// machine cycles).
     fn op_inc_hl_ind(&mut self) {
         let address = self.registers.hl();
-        let value = self.memory.read(address);
+        let value = self.read(address);
         let value = self.run_inc_u8_and_update_flags(value);
-        self.memory.write(address, value);
+        self.write(address, value);
     }
 
     /// Opcode 0x35: [DEC (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=58)
@@ -1492,9 +1500,9 @@ impl Cpu {
     /// machine cycles).
     fn op_dec_hl_ind(&mut self) {
         let address = self.registers.hl();
-        let value = self.memory.read(address);
+        let value = self.read(address);
         let value = self.run_dec_u8_and_update_flags(value);
-        self.memory.write(address, value);
+        self.write(address, value);
     }
 
     /// Opcode 0x36: [LD (HL),d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=19)
@@ -1503,7 +1511,7 @@ impl Cpu {
     /// data following the opcode (3 machine cycles).
     fn op_ld_hl_d8(&mut self) {
         let value = self.fetch_u8();
-        self.memory.write(self.registers.hl(), value);
+        self.write(self.registers.hl(), value);
     }
 
     /// Opcode 0x37: [SCF](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=69)
@@ -1544,7 +1552,7 @@ impl Cpu {
     /// machine cycles).
     fn op_ld_a_hl_dec(&mut self) {
         let address = self.registers.hl();
-        self.registers.register_a = self.memory.read(address);
+        self.registers.register_a = self.read(address);
         self.registers.set_hl(address - 1);
     }
 
@@ -2894,7 +2902,7 @@ impl Cpu {
     /// value of n, so the possible range is 0xFF00-0xFFFF (3 machine cycles).
     fn op_ldh_a8_a(&mut self) {
         let address = 0xFF00 | (self.fetch_u8() as u16);
-        self.memory.write(address, self.registers.register_a);
+        self.write(address, self.registers.register_a);
     }
 
     /// Opcode 0xE1: [POP HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
@@ -2913,7 +2921,7 @@ impl Cpu {
     /// the possible range is 0xFF00-0xFFFF (2 machine cycles).
     fn ldh_c_a(&mut self) {
         let address = 0xFF00 & self.registers.register_c as u16;
-        self.memory.write(address, self.registers.register_a);
+        self.write(address, self.registers.register_a);
     }
 
     /// Opcode 0xE5: [PUSH HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
@@ -2978,7 +2986,7 @@ impl Cpu {
     /// opcode, data from the 8-bit A register (4 machine cycles).
     fn op_ld_a16_a(&mut self) {
         let address = self.fetch_u16();
-        self.memory.write(address, self.registers.register_a);
+        self.write(address, self.registers.register_a);
     }
 
     /// Opcode 0xEE: [XOR d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=67)
@@ -3008,7 +3016,7 @@ impl Cpu {
     /// cycles).
     fn op_ldh_a_a8(&mut self) {
         let address = 0xFF00 | (self.fetch_u8() as u16);
-        self.registers.register_a = self.memory.read(address);
+        self.registers.register_a = self.read(address);
     }
 
     /// Opcode 0xF1: [POP AF](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
@@ -3030,7 +3038,7 @@ impl Cpu {
     /// the possible range is 0xFF00-0xFFFF (2 machine cycles).
     fn ldh_a_c(&mut self) {
         let address = 0xFF00 & self.registers.register_c as u16;
-        self.registers.register_a = self.memory.read(address);
+        self.registers.register_a = self.read(address);
     }
 
     /// Opcode 0xF3: [DI](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=118)
@@ -3103,7 +3111,7 @@ impl Cpu {
     /// 16-bit operand following the opcode (4 machine cycles).
     fn op_ld_a_a16(&mut self) {
         let address = self.fetch_u16();
-        self.registers.register_a = self.memory.read(address);
+        self.registers.register_a = self.read(address);
     }
 
     /// Opcode 0xFB: [EI](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=119)
