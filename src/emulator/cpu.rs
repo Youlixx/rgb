@@ -316,14 +316,14 @@ const CB_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::cb_swap_l,      // 0x35 : SWAP L
     Cpu::cb_swap_hl,     // 0x36 : SWAP (HL)
     Cpu::cb_swap_a,      // 0x37 : SWAP A
-    Cpu::op_placeholder, // 0x38 : SRL B
-    Cpu::op_placeholder, // 0x39 : SRL C
-    Cpu::op_placeholder, // 0x3A : SRL D
-    Cpu::op_placeholder, // 0x3B : SRL E
-    Cpu::op_placeholder, // 0x3C : SRL H
-    Cpu::op_placeholder, // 0x3D : SRL L
-    Cpu::op_placeholder, // 0x3E : SRL (HL)
-    Cpu::op_placeholder, // 0x3F : SRL A
+    Cpu::cb_srl_b,       // 0x38 : SRL B
+    Cpu::cb_srl_c,       // 0x39 : SRL C
+    Cpu::cb_srl_d,       // 0x3A : SRL D
+    Cpu::cb_srl_e,       // 0x3B : SRL E
+    Cpu::cb_srl_h,       // 0x3C : SRL H
+    Cpu::cb_srl_l,       // 0x3D : SRL L
+    Cpu::cb_srl_hl,      // 0x3E : SRL (HL)
+    Cpu::cb_srl_a,       // 0x3F : SRL A
     Cpu::op_placeholder, // 0x40 : BIT 0,B
     Cpu::op_placeholder, // 0x41 : BIT 0,C
     Cpu::op_placeholder, // 0x42 : BIT 0,D
@@ -945,6 +945,21 @@ impl Cpu {
     fn run_swap_u8_and_update_flags(&mut self, operand: u8) -> u8 {
         let result = (operand >> 4) | (operand << 4);
         self.status_flags = 0;
+
+        if result == 0 {
+            self.status_flags |= STATUS_FLAG_Z;
+        }
+
+        result
+    }
+
+    fn run_srl_u8_and_update_flags(&mut self, operand: u8) -> u8 {
+        let result = operand >> 1;
+        self.status_flags = 0;
+
+        if (operand & 0x01) != 0 {
+            self.status_flags |= STATUS_FLAG_C;
+        }
 
         if result == 0 {
             self.status_flags |= STATUS_FLAG_Z;
@@ -3516,5 +3531,64 @@ impl Cpu {
     /// Swap the two halves of the 8-bit register A (2 machine cycles).
     fn cb_swap_a(&mut self) {
         self.registers.register_a = self.run_swap_u8_and_update_flags(self.registers.register_a);
+    }
+
+    /// Opcode 0x38: [SRL B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=95)
+    ///
+    /// Shift right of the 8-bit register B (2 machine cycles).
+    fn cb_srl_b(&mut self) {
+        self.registers.register_b = self.run_srl_u8_and_update_flags(self.registers.register_b);
+    }
+
+    /// Opcode 0x39: [SRL C](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=95)
+    ///
+    /// Shift right of the 8-bit register C (2 machine cycles).
+    fn cb_srl_c(&mut self) {
+        self.registers.register_c = self.run_srl_u8_and_update_flags(self.registers.register_c);
+    }
+
+    /// Opcode 0x3A: [SRL D](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=95)
+    ///
+    /// Shift right of the 8-bit register D (2 machine cycles).
+    fn cb_srl_d(&mut self) {
+        self.registers.register_d = self.run_srl_u8_and_update_flags(self.registers.register_d);
+    }
+
+    /// Opcode 0x3B: [SRL E](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=95)
+    ///
+    /// Shift right of the 8-bit register E (2 machine cycles).
+    fn cb_srl_e(&mut self) {
+        self.registers.register_e = self.run_srl_u8_and_update_flags(self.registers.register_e);
+    }
+
+    /// Opcode 0x3C: [SRL H](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=95)
+    ///
+    /// Shift right of the 8-bit register H (2 machine cycles).
+    fn cb_srl_h(&mut self) {
+        self.registers.register_h = self.run_srl_u8_and_update_flags(self.registers.register_h);
+    }
+
+    /// Opcode 0x3D: [SRL L](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=95)
+    ///
+    /// Shift right of the 8-bit register L (2 machine cycles).
+    fn cb_srl_l(&mut self) {
+        self.registers.register_l = self.run_srl_u8_and_update_flags(self.registers.register_l);
+    }
+
+    /// Opcode 0x3E: [SRL (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=96)
+    ///
+    /// Shift right of data from the absolute address specified by the 16-bit register
+    /// HL (4 machine cycles).
+    fn cb_srl_hl(&mut self) {
+        let operand = self.read_hl();
+        let value = self.run_srl_u8_and_update_flags(operand);
+        self.write_hl(value);
+    }
+
+    /// Opcode 0x3F: [SRL A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=95)
+    ///
+    /// Shift right of the 8-bit register A (2 machine cycles).
+    fn cb_srl_a(&mut self) {
+        self.registers.register_a = self.run_srl_u8_and_update_flags(self.registers.register_a);
     }
 }
