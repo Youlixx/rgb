@@ -5067,4 +5067,10 @@ mod tests {
             panic!("Test failed\n{}", log);
         }
     }
+
+    #[test]
+    fn test_rom_ld() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/06-ld r,r.gb");
+        run_test_rom(rom);
+    }
 }
