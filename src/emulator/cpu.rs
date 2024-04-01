@@ -5073,4 +5073,12 @@ mod tests {
         let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/06-ld r,r.gb");
         run_test_rom(rom);
     }
+
+    #[test]
+    fn test_rom_jp() {
+        let rom = include_bytes!(
+            "../../roms/gb-test-roms/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb"
+        );
+        run_test_rom(rom);
+    }
 }
