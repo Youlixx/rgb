@@ -1254,11 +1254,12 @@ impl Cpu {
     fn op_rra(&mut self) {
         let carry = (self.registers.register_a & 0x01) != 0;
         self.registers.register_a = self.registers.register_a.wrapping_shr(1);
-        self.status_flags = 0;
 
         if (self.status_flags & STATUS_FLAG_C) != 0 {
             self.registers.register_a |= 0x80;
         }
+
+        self.status_flags = 0;
 
         if carry {
             self.status_flags |= STATUS_FLAG_C;
