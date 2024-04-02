@@ -2928,14 +2928,14 @@ impl Cpu {
         self.registers.register_h = self.stack_pop_u8();
     }
 
-    /// Opcode 0xE2: [LDH (C),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
+    /// Opcode 0xE2: [LDH (C),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=27)
     ///
     /// Load to the address specified by the 8-bit C register, data from the 8-bit A
     /// register. The full 16-bit absolute address is obtained by setting the most
     /// significant byte to 0xFF and the least significant byte to the value of C, so
     /// the possible range is 0xFF00-0xFFFF (2 machine cycles).
     fn ldh_c_a(&mut self) {
-        let address = 0xFF00 & self.registers.register_c as u16;
+        let address = 0xFF00 | self.registers.register_c as u16;
         self.write(address, self.registers.register_a);
     }
 
@@ -3046,14 +3046,14 @@ impl Cpu {
         self.registers.register_a = self.stack_pop_u8();
     }
 
-    /// Opcode 0xE2: [LDH A,(C)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
+    /// Opcode 0xF2: [LDH A,(C)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=26)
     ///
     /// Load to the 8-bit A register, data from the address specified by the 8-bit C
     /// register. The full 16-bit absolute address is obtained by setting the most
     /// significant byte to 0xFF and the least significant byte to the value of C, so
     /// the possible range is 0xFF00-0xFFFF (2 machine cycles).
     fn ldh_a_c(&mut self) {
-        let address = 0xFF00 & self.registers.register_c as u16;
+        let address = 0xFF00 | self.registers.register_c as u16;
         self.registers.register_a = self.read(address);
     }
 
