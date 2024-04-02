@@ -2974,17 +2974,18 @@ impl Cpu {
         let offset = self.fetch_u8() as i8;
 
         // TODO: This op is supposed to be 4 machine cycles long, needs 2 extra dummy cycles
-        self.stack_pointer = (self.stack_pointer as i32).wrapping_add(offset as i32) as u16;
+        let stack_pointer = (self.stack_pointer as i32).wrapping_add(offset as i32) as u16;
         self.status_flags = 0;
 
-        // TODO: check type convertion...
-        if ((self.stack_pointer & 0x0F) + (offset as u16 & 0x0F)) > 0x0F {
+        if ((self.stack_pointer & 0x0F).wrapping_add(offset as u16 & 0x0F)) > 0x0F {
             self.status_flags |= STATUS_FLAG_H;
         }
 
-        if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
+        if ((self.stack_pointer & 0xFF).wrapping_add(offset as u16 & 0xFF)) > 0xFF {
             self.status_flags |= STATUS_FLAG_C;
         }
+
+        self.stack_pointer = stack_pointer;
     }
 
     /// Opcode 0xE9: [JP (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=105)
