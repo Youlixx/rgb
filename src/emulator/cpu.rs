@@ -1350,19 +1350,9 @@ impl Cpu {
     /// BCD result after an arithmetic operation on packed BCD numbers (1 machine
     /// cycle).
     fn op_daa(&mut self) {
-        let mut current_value = self.registers.register_a as i16;
+        let mut current_value = self.registers.register_a as u16;
 
-        self.status_flags &= !(STATUS_FLAG_Z | STATUS_FLAG_H);
-
-        if (self.status_flags & STATUS_FLAG_N) != 0 {
-            if (self.status_flags & STATUS_FLAG_H) != 0 {
-                current_value = current_value.wrapping_sub(0x06) & 0xFF;
-            }
-
-            if (self.status_flags & STATUS_FLAG_C) != 0 {
-                current_value = current_value.wrapping_sub(0x60);
-            }
-        } else {
+        if (self.status_flags & STATUS_FLAG_N) == 0 {
             if (self.status_flags & STATUS_FLAG_H) != 0 || (current_value & 0x0F) > 0x09 {
                 current_value = current_value.wrapping_add(0x06);
             }
@@ -1370,7 +1360,17 @@ impl Cpu {
             if (self.status_flags & STATUS_FLAG_C) != 0 || current_value > 0x9F {
                 current_value = current_value.wrapping_add(0x60);
             }
+        } else {
+            if (self.status_flags & STATUS_FLAG_H) != 0 {
+                current_value = current_value.wrapping_sub(0x06) & 0xFF;
+            }
+
+            if (self.status_flags & STATUS_FLAG_C) != 0 {
+                current_value = current_value.wrapping_sub(0x60);
+            }
         }
+
+        self.status_flags &= !(STATUS_FLAG_Z | STATUS_FLAG_H);
 
         if (current_value & 0xFF) == 0 {
             self.status_flags |= STATUS_FLAG_Z;
