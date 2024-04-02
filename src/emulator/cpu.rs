@@ -796,7 +796,7 @@ impl Cpu {
 
     fn run_or_and_update_flags(&mut self, operand: u8) {
         self.registers.register_a |= operand;
-        self.status_flags = STATUS_FLAG_H;
+        self.status_flags = 0;
 
         if self.registers.register_a == 0 {
             self.status_flags |= STATUS_FLAG_Z;
