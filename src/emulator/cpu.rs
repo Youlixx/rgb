@@ -887,7 +887,11 @@ impl Cpu {
 
     fn run_rl_u8_and_update_flags(&mut self, operand: u8) -> u8 {
         let carry = (operand & 0x80) != 0;
-        let result = operand.wrapping_shl(1) | ((self.status_flags & STATUS_FLAG_C) != 0) as u8;
+        let mut result = operand.wrapping_shl(1);
+
+        if (self.status_flags & STATUS_FLAG_C) != 0 {
+            result |= 0x01;
+        }
 
         self.status_flags = 0;
 
@@ -895,7 +899,7 @@ impl Cpu {
             self.status_flags |= STATUS_FLAG_C;
         }
 
-        if operand == 0 {
+        if result == 0 {
             self.status_flags |= STATUS_FLAG_Z;
         }
 
