@@ -844,7 +844,7 @@ impl Cpu {
             self.status_flags |= STATUS_FLAG_Z;
         }
 
-        if (result & 0xF) == 0 {
+        if (result & 0xF) == 0xF {
             self.status_flags |= STATUS_FLAG_H;
         }
 
