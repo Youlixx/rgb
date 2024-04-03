@@ -585,6 +585,7 @@ pub struct Cpu {
     status_flags: u8,
     stack_pointer: u16,
 
+    interrupt_master_toggle: bool,
     interrupt_master_enabled: bool,
 }
 
@@ -596,11 +597,17 @@ impl Cpu {
             registers: CpuRegisters::new(),
             status_flags: 0,
             stack_pointer: 0,
+            interrupt_master_toggle: false,
             interrupt_master_enabled: false,
         }
     }
 
     pub fn tick(&mut self) {
+        if self.interrupt_master_toggle {
+            self.interrupt_master_enabled = true;
+            self.interrupt_master_toggle = false;
+        }
+
         let opcode = self.fetch_u8();
         OP_CODE_FUNCTION_TABLE[opcode as usize](self);
     }
@@ -787,7 +794,7 @@ impl Cpu {
 
     fn run_xor_and_update_flags(&mut self, operand: u8) {
         self.registers.register_a ^= operand;
-        self.status_flags = STATUS_FLAG_H;
+        self.status_flags = 0;
 
         if self.registers.register_a == 0 {
             self.status_flags |= STATUS_FLAG_Z;
@@ -796,7 +803,7 @@ impl Cpu {
 
     fn run_or_and_update_flags(&mut self, operand: u8) {
         self.registers.register_a |= operand;
-        self.status_flags = STATUS_FLAG_H;
+        self.status_flags = 0;
 
         if self.registers.register_a == 0 {
             self.status_flags |= STATUS_FLAG_Z;
@@ -844,7 +851,7 @@ impl Cpu {
             self.status_flags |= STATUS_FLAG_Z;
         }
 
-        if (result & 0xF) == 0 {
+        if (result & 0xF) == 0xF {
             self.status_flags |= STATUS_FLAG_H;
         }
 
@@ -886,16 +893,25 @@ impl Cpu {
     }
 
     fn run_rl_u8_and_update_flags(&mut self, operand: u8) -> u8 {
-        let carry = (operand & 0x80) != 0;
-        let result = operand.wrapping_shl(1) | ((self.status_flags & STATUS_FLAG_C) != 0) as u8;
+        let carry = if (self.status_flags & STATUS_FLAG_C) != 0 {
+            0x01
+        } else {
+            0x00
+        };
+
+        let mut result = operand.wrapping_shl(1) | carry;
+
+        if (self.status_flags & STATUS_FLAG_C) != 0 {
+            result |= 0x01;
+        }
 
         self.status_flags = 0;
 
-        if carry {
+        if (operand & 0x80) != 0 {
             self.status_flags |= STATUS_FLAG_C;
         }
 
-        if operand == 0 {
+        if result == 0 {
             self.status_flags |= STATUS_FLAG_Z;
         }
 
@@ -903,17 +919,21 @@ impl Cpu {
     }
 
     fn run_rr_u8_and_update_flags(&mut self, operand: u8) -> u8 {
-        let carry = (operand & 0x01) != 0;
-        let result =
-            operand.wrapping_shr(1) | ((((self.status_flags & STATUS_FLAG_C) != 0) as u8) << 7);
+        let carry = if (self.status_flags & STATUS_FLAG_C) != 0 {
+            0x80
+        } else {
+            0x00
+        };
+
+        let result = operand.wrapping_shr(1) | carry;
 
         self.status_flags = 0;
 
-        if carry {
+        if (operand & 0x01) != 0 {
             self.status_flags |= STATUS_FLAG_C;
         }
 
-        if operand == 0 {
+        if result == 0 {
             self.status_flags |= STATUS_FLAG_Z;
         }
 
@@ -1181,11 +1201,12 @@ impl Cpu {
     fn op_rla(&mut self) {
         let carry = (self.registers.register_a & 0x80) != 0;
         self.registers.register_a = self.registers.register_a.wrapping_shl(1);
-        self.status_flags = 0;
 
         if (self.status_flags & STATUS_FLAG_C) != 0 {
             self.registers.register_a |= 0x01;
         }
+
+        self.status_flags = 0;
 
         if carry {
             self.status_flags |= STATUS_FLAG_C;
@@ -1253,11 +1274,12 @@ impl Cpu {
     fn op_rra(&mut self) {
         let carry = (self.registers.register_a & 0x01) != 0;
         self.registers.register_a = self.registers.register_a.wrapping_shr(1);
-        self.status_flags = 0;
 
         if (self.status_flags & STATUS_FLAG_C) != 0 {
             self.registers.register_a |= 0x80;
         }
+
+        self.status_flags = 0;
 
         if carry {
             self.status_flags |= STATUS_FLAG_C;
@@ -1335,19 +1357,9 @@ impl Cpu {
     /// BCD result after an arithmetic operation on packed BCD numbers (1 machine
     /// cycle).
     fn op_daa(&mut self) {
-        let mut current_value = self.registers.register_a as i16;
+        let mut current_value = self.registers.register_a as u16;
 
-        self.status_flags &= !(STATUS_FLAG_Z | STATUS_FLAG_H);
-
-        if (self.status_flags & STATUS_FLAG_N) != 0 {
-            if (self.status_flags & STATUS_FLAG_H) != 0 {
-                current_value = current_value.wrapping_sub(0x06) & 0xFF;
-            }
-
-            if (self.status_flags & STATUS_FLAG_C) != 0 {
-                current_value = current_value.wrapping_sub(0x60);
-            }
-        } else {
+        if (self.status_flags & STATUS_FLAG_N) == 0 {
             if (self.status_flags & STATUS_FLAG_H) != 0 || (current_value & 0x0F) > 0x09 {
                 current_value = current_value.wrapping_add(0x06);
             }
@@ -1355,7 +1367,17 @@ impl Cpu {
             if (self.status_flags & STATUS_FLAG_C) != 0 || current_value > 0x9F {
                 current_value = current_value.wrapping_add(0x60);
             }
+        } else {
+            if (self.status_flags & STATUS_FLAG_H) != 0 {
+                current_value = current_value.wrapping_sub(0x06) & 0xFF;
+            }
+
+            if (self.status_flags & STATUS_FLAG_C) != 0 {
+                current_value = current_value.wrapping_sub(0x60);
+            }
         }
+
+        self.status_flags &= !(STATUS_FLAG_Z | STATUS_FLAG_H);
 
         if (current_value & 0xFF) == 0 {
             self.status_flags |= STATUS_FLAG_Z;
@@ -2913,14 +2935,14 @@ impl Cpu {
         self.registers.register_h = self.stack_pop_u8();
     }
 
-    /// Opcode 0xE2: [LDH (C),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
+    /// Opcode 0xE2: [LDH (C),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=27)
     ///
     /// Load to the address specified by the 8-bit C register, data from the 8-bit A
     /// register. The full 16-bit absolute address is obtained by setting the most
     /// significant byte to 0xFF and the least significant byte to the value of C, so
     /// the possible range is 0xFF00-0xFFFF (2 machine cycles).
     fn ldh_c_a(&mut self) {
-        let address = 0xFF00 & self.registers.register_c as u16;
+        let address = 0xFF00 | self.registers.register_c as u16;
         self.write(address, self.registers.register_a);
     }
 
@@ -2959,17 +2981,18 @@ impl Cpu {
         let offset = self.fetch_u8() as i8;
 
         // TODO: This op is supposed to be 4 machine cycles long, needs 2 extra dummy cycles
-        self.stack_pointer = (self.stack_pointer as i32).wrapping_add(offset as i32) as u16;
+        let stack_pointer = (self.stack_pointer as i32).wrapping_add(offset as i32) as u16;
         self.status_flags = 0;
 
-        // TODO: check type convertion...
-        if ((self.stack_pointer & 0x0F) + (offset as u16 & 0x0F)) > 0x0F {
+        if ((self.stack_pointer & 0x0F).wrapping_add(offset as u16 & 0x0F)) > 0x0F {
             self.status_flags |= STATUS_FLAG_H;
         }
 
-        if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
+        if ((self.stack_pointer & 0xFF).wrapping_add(offset as u16 & 0xFF)) > 0xFF {
             self.status_flags |= STATUS_FLAG_C;
         }
+
+        self.stack_pointer = stack_pointer;
     }
 
     /// Opcode 0xE9: [JP (HL)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=105)
@@ -3026,18 +3049,18 @@ impl Cpu {
     /// F register value, so all flags are changed based on the 8-bit data that is read
     /// from memory (3 machine cycles).
     fn op_pop_af(&mut self) {
-        self.status_flags = self.stack_pop_u8();
+        self.status_flags = self.stack_pop_u8() & 0xF0;
         self.registers.register_a = self.stack_pop_u8();
     }
 
-    /// Opcode 0xE2: [LDH A,(C)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=38)
+    /// Opcode 0xF2: [LDH A,(C)](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=26)
     ///
     /// Load to the 8-bit A register, data from the address specified by the 8-bit C
     /// register. The full 16-bit absolute address is obtained by setting the most
     /// significant byte to 0xFF and the least significant byte to the value of C, so
     /// the possible range is 0xFF00-0xFFFF (2 machine cycles).
     fn ldh_a_c(&mut self) {
-        let address = 0xFF00 & self.registers.register_c as u16;
+        let address = 0xFF00 | self.registers.register_c as u16;
         self.registers.register_a = self.read(address);
     }
 
@@ -3047,7 +3070,6 @@ impl Cpu {
     /// effects of the EI instruction if any (1 machine cycles).
     fn op_di(&mut self) {
         self.interrupt_master_enabled = false;
-        // TODO cancel effects of EI
     }
 
     /// Opcode 0xF5: [PUSH AF](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
@@ -3119,8 +3141,7 @@ impl Cpu {
     /// Schedules interrupt handling to be enabled after the next machine cycle (1
     /// machine cycle).
     fn op_ei(&mut self) {
-        // TODO: should be delayed by one cycle?
-        self.interrupt_master_enabled = false;
+        self.interrupt_master_toggle = true;
     }
 
     /// Opcode 0xFE: [CP d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=54)
@@ -5005,5 +5026,128 @@ impl Cpu {
     /// Set bit 7 of 8-bit register A (2 machine cycles).
     fn cb_set_7_a(&mut self) {
         self.registers.register_a |= 0x80;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{cell::RefCell, rc::Rc};
+
+    use crate::emulator::memory::Memory;
+
+    use super::Cpu;
+
+    struct TestMemoryController {
+        memory: Vec<u8>,
+        log: String,
+        completed: bool,
+    }
+
+    impl TestMemoryController {
+        fn new(rom: &[u8]) -> Self {
+            let mut memory = vec![0; 0x10000];
+            memory[..rom.len()].copy_from_slice(rom);
+
+            Self {
+                memory,
+                log: String::new(),
+                completed: false,
+            }
+        }
+    }
+
+    impl Memory for TestMemoryController {
+        fn read(&mut self, address: u16) -> u8 {
+            self.memory[address as usize]
+        }
+
+        fn write(&mut self, address: u16, value: u8) {
+            if address == 0xFF01 {
+                self.log.push(value as char);
+
+                if self.log.ends_with("Passed") || self.log.ends_with("Failed") {
+                    self.completed = true;
+                }
+            }
+
+            self.memory[address as usize] = value;
+        }
+    }
+
+    fn run_test_rom(rom: &[u8]) {
+        let memory = Rc::new(RefCell::new(TestMemoryController::new(rom)));
+        let mut cpu = Cpu::new(memory.clone());
+
+        while !memory.borrow().completed {
+            cpu.tick();
+        }
+
+        let log = memory.borrow().log.clone();
+
+        if log.ends_with("Failed") {
+            panic!("Test failed\n{}", log);
+        }
+    }
+
+    #[test]
+    fn test_rom_special() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/01-special.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_op_sp_hl() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/03-op sp,hl.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_op_r_imm() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/04-op r,imm.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_op_rp() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/05-op rp.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_ld_r_r() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/06-ld r,r.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_jr_jp_call_ret_rst() {
+        let rom = include_bytes!(
+            "../../roms/gb-test-roms/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb"
+        );
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_misc() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/08-misc instrs.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_op_r_r() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/09-op r,r.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_bit() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/10-bit ops.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_op_a_hl() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/11-op a,(hl).gb");
+        run_test_rom(rom);
     }
 }

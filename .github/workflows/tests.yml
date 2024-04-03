@@ -1,0 +1,26 @@
+name: Rust Cargo Test
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+
+    - name: Get test roms
+      run: |
+        mkdir roms
+        cd roms
+        git clone https://github.com/retrio/gb-test-roms.git
+        cd ..
+
+    - name: Run cargo test
+      run: cargo test --all --verbose
