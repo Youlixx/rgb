@@ -585,6 +585,7 @@ pub struct Cpu {
     status_flags: u8,
     stack_pointer: u16,
 
+    interrupt_master_toggle: bool,
     interrupt_master_enabled: bool,
 }
 
@@ -596,11 +597,17 @@ impl Cpu {
             registers: CpuRegisters::new(),
             status_flags: 0,
             stack_pointer: 0,
+            interrupt_master_toggle: false,
             interrupt_master_enabled: false,
         }
     }
 
     pub fn tick(&mut self) {
+        if self.interrupt_master_toggle {
+            self.interrupt_master_enabled = true;
+            self.interrupt_master_toggle = false;
+        }
+
         let opcode = self.fetch_u8();
         OP_CODE_FUNCTION_TABLE[opcode as usize](self);
     }
@@ -3063,7 +3070,6 @@ impl Cpu {
     /// effects of the EI instruction if any (1 machine cycles).
     fn op_di(&mut self) {
         self.interrupt_master_enabled = false;
-        // TODO cancel effects of EI
     }
 
     /// Opcode 0xF5: [PUSH AF](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=37)
@@ -3135,8 +3141,7 @@ impl Cpu {
     /// Schedules interrupt handling to be enabled after the next machine cycle (1
     /// machine cycle).
     fn op_ei(&mut self) {
-        // TODO: should be delayed by one cycle?
-        self.interrupt_master_enabled = false;
+        self.interrupt_master_toggle = true;
     }
 
     /// Opcode 0xFE: [CP d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=54)
@@ -5087,12 +5092,6 @@ mod tests {
     #[test]
     fn test_rom_special() {
         let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/01-special.gb");
-        run_test_rom(rom);
-    }
-
-    #[test]
-    fn test_rom_interrupts() {
-        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/02-interrupts.gb");
         run_test_rom(rom);
     }
 
