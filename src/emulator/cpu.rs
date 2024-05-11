@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use bitmask_enum::bitmask;
 
 use super::memory::MemoryController;
 
@@ -520,10 +520,13 @@ const CB_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::cb_set_7_a,  // 0xFF : SET 7,A
 ];
 
-const STATUS_FLAG_Z: u8 = 0x80;
-const STATUS_FLAG_N: u8 = 0x40;
-const STATUS_FLAG_H: u8 = 0x20;
-const STATUS_FLAG_C: u8 = 0x10;
+#[bitmask(u8)]
+enum StatusFlags {
+    Z = 0x80,
+    N = 0x40,
+    H = 0x20,
+    C = 0x10
+}
 
 struct CpuRegisters {
     register_a: u8,
@@ -577,11 +580,11 @@ impl CpuRegisters {
 }
 
 pub struct Cpu {
-    memory: Rc<dyn MemoryController>,
+    memory: Box<dyn MemoryController>,
     program_counter: u16,
 
     registers: CpuRegisters,
-    status_flags: u8,
+    status_flags: StatusFlags,
     stack_pointer: u16,
 
     interrupt_master_toggle: bool,
@@ -589,12 +592,12 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(memory: Rc<dyn MemoryController>) -> Self {
+    pub fn new(memory: Box<dyn MemoryController>) -> Self {
         Self {
             memory,
             program_counter: 0x0100,
             registers: CpuRegisters::new(),
-            status_flags: 0,
+            status_flags: StatusFlags::none(),
             stack_pointer: 0,
             interrupt_master_toggle: false,
             interrupt_master_enabled: false,
@@ -612,11 +615,11 @@ impl Cpu {
     }
 
     fn read(&mut self, address: u16) -> u8 {
-        self.memory.read(address)
+        self.memory.cycle_read(address)
     }
 
     fn write(&mut self, address: u16, value: u8) {
-        self.memory.write(address, value);
+        self.memory.cycle_write(address, value);
     }
 
     fn read_hl(&mut self) -> u8 {
@@ -669,18 +672,18 @@ impl Cpu {
 
     fn run_add_u8_and_update_flags(&mut self, operand: u8) {
         let result: u16 = (self.registers.register_a as u16) + (operand as u16);
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if (result & 0xFF) == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         if ((self.registers.register_a & 0xF) + (operand & 0xF)) > 0xF {
-            self.status_flags |= STATUS_FLAG_H;
+            self.status_flags |= StatusFlags::H;
         }
 
         if result > 0xFF {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         self.registers.register_a = (result & 0xFF) as u8;
@@ -691,21 +694,21 @@ impl Cpu {
         let hl = self.registers.hl();
         let result: u32 = (hl as u32) + (operand as u32);
 
-        self.status_flags &= !(STATUS_FLAG_N | STATUS_FLAG_C | STATUS_FLAG_H);
+        self.status_flags &= !(StatusFlags::N | StatusFlags::C | StatusFlags::H);
 
         if (((hl & 0xFFF) + (operand & 0xFFF)) & 0x1000) != 0 {
-            self.status_flags |= STATUS_FLAG_H;
+            self.status_flags |= StatusFlags::H;
         }
 
         if (result & 0x10000) != 0 {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         self.registers.set_hl((result & 0xFFFF) as u16);
     }
 
     fn run_adc_and_update_flags(&mut self, operand: u8) {
-        let carry: u16 = if (self.status_flags & STATUS_FLAG_C) != 0 {
+        let carry: u16 = if (self.status_flags & StatusFlags::C) != 0 {
             1
         } else {
             0
@@ -713,43 +716,43 @@ impl Cpu {
 
         let result: u16 = (self.registers.register_a as u16) + (operand as u16) + carry;
 
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if (result & 0xFF) == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         if ((self.registers.register_a & 0xF) + (operand & 0xF) + (carry as u8)) > 0xF {
-            self.status_flags |= STATUS_FLAG_H;
+            self.status_flags |= StatusFlags::H;
         }
 
         if result > 0xFF {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         self.registers.register_a = (result & 0xFF) as u8;
     }
 
     fn run_sub_and_update_flags(&mut self, operand: u8) {
-        self.status_flags = STATUS_FLAG_N;
+        self.status_flags = StatusFlags::N;
 
         if self.registers.register_a == operand {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         if (self.registers.register_a & 0xF) < (operand & 0xF) {
-            self.status_flags |= STATUS_FLAG_H;
+            self.status_flags |= StatusFlags::H;
         }
 
         if self.registers.register_a < operand {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         self.registers.register_a = self.registers.register_a.wrapping_sub(operand);
     }
 
     fn run_sbc_and_update_flags(&mut self, operand: u8) {
-        let carry: u8 = if (self.status_flags & STATUS_FLAG_C) != 0 {
+        let carry: u8 = if (self.status_flags & StatusFlags::C) != 0 {
             1
         } else {
             0
@@ -761,14 +764,14 @@ impl Cpu {
             .wrapping_sub(operand)
             .wrapping_sub(carry);
 
-        self.status_flags = STATUS_FLAG_N;
+        self.status_flags = StatusFlags::N;
 
         if result == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         if (self.registers.register_a & 0xF) < ((operand & 0xF) + carry) {
-            self.status_flags |= STATUS_FLAG_H;
+            self.status_flags |= StatusFlags::H;
         }
 
         if (self.registers.register_a as u16)
@@ -776,7 +779,7 @@ impl Cpu {
             .wrapping_sub(carry as u16)
             > 0xFF
         {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         self.registers.register_a = result;
@@ -784,57 +787,57 @@ impl Cpu {
 
     fn run_and_and_update_flags(&mut self, operand: u8) {
         self.registers.register_a &= operand;
-        self.status_flags = STATUS_FLAG_H;
+        self.status_flags = StatusFlags::H;
 
         if self.registers.register_a == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
     }
 
     fn run_xor_and_update_flags(&mut self, operand: u8) {
         self.registers.register_a ^= operand;
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if self.registers.register_a == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
     }
 
     fn run_or_and_update_flags(&mut self, operand: u8) {
         self.registers.register_a |= operand;
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if self.registers.register_a == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
     }
 
     fn run_cp_and_update_flags(&mut self, operand: u8) {
-        self.status_flags = STATUS_FLAG_N;
+        self.status_flags = StatusFlags::N;
 
         if self.registers.register_a == operand {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         if (self.registers.register_a & 0xF) < (operand & 0xF) {
-            self.status_flags |= STATUS_FLAG_H;
+            self.status_flags |= StatusFlags::H;
         }
 
         if self.registers.register_a < operand {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
     }
 
     fn run_inc_u8_and_update_flags(&mut self, operand: u8) -> u8 {
         let result = operand.wrapping_add(1);
-        self.status_flags &= !(STATUS_FLAG_N | STATUS_FLAG_Z | STATUS_FLAG_H);
+        self.status_flags &= !(StatusFlags::N | StatusFlags::Z | StatusFlags::H);
 
         if result == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         if (result & 0xF) == 0 {
-            self.status_flags |= STATUS_FLAG_H;
+            self.status_flags |= StatusFlags::H;
         }
 
         result
@@ -843,15 +846,15 @@ impl Cpu {
     fn run_dec_u8_and_update_flags(&mut self, operand: u8) -> u8 {
         let result = operand.wrapping_sub(1);
 
-        self.status_flags &= !(STATUS_FLAG_Z | STATUS_FLAG_H);
-        self.status_flags |= STATUS_FLAG_N;
+        self.status_flags &= !(StatusFlags::Z | StatusFlags::H);
+        self.status_flags |= StatusFlags::N;
 
         if result == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         if (result & 0xF) == 0xF {
-            self.status_flags |= STATUS_FLAG_H;
+            self.status_flags |= StatusFlags::H;
         }
 
         result
@@ -861,14 +864,14 @@ impl Cpu {
         let carry = (operand & 0x80) != 0;
         let result = operand.wrapping_shl(1) | carry as u8;
 
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if carry {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         if operand == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         result
@@ -878,21 +881,21 @@ impl Cpu {
         let carry = (operand & 0x01) != 0;
         let result = operand.wrapping_shr(1) | ((carry as u8) << 7);
 
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if carry {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         if operand == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         result
     }
 
     fn run_rl_u8_and_update_flags(&mut self, operand: u8) -> u8 {
-        let carry = if (self.status_flags & STATUS_FLAG_C) != 0 {
+        let carry = if (self.status_flags & StatusFlags::C) != 0 {
             0x01
         } else {
             0x00
@@ -900,25 +903,25 @@ impl Cpu {
 
         let mut result = operand.wrapping_shl(1) | carry;
 
-        if (self.status_flags & STATUS_FLAG_C) != 0 {
+        if (self.status_flags & StatusFlags::C) != 0 {
             result |= 0x01;
         }
 
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if (operand & 0x80) != 0 {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         if result == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         result
     }
 
     fn run_rr_u8_and_update_flags(&mut self, operand: u8) -> u8 {
-        let carry = if (self.status_flags & STATUS_FLAG_C) != 0 {
+        let carry = if (self.status_flags & StatusFlags::C) != 0 {
             0x80
         } else {
             0x00
@@ -926,14 +929,14 @@ impl Cpu {
 
         let result = operand.wrapping_shr(1) | carry;
 
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if (operand & 0x01) != 0 {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         if result == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         result
@@ -941,14 +944,14 @@ impl Cpu {
 
     fn run_sla_u8_and_update_flags(&mut self, operand: u8) -> u8 {
         let carry = (operand & 0x80) != 0;
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if carry {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         if (operand & 0x7F) == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         operand.wrapping_shl(1)
@@ -958,14 +961,14 @@ impl Cpu {
         let carry = (operand & 0x01) != 0;
         let result = operand.wrapping_shr(1) | (operand & 0x80);
 
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if carry {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         if result == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         result
@@ -973,10 +976,10 @@ impl Cpu {
 
     fn run_swap_u8_and_update_flags(&mut self, operand: u8) -> u8 {
         let result = (operand >> 4) | (operand << 4);
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if result == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         result
@@ -984,25 +987,25 @@ impl Cpu {
 
     fn run_srl_u8_and_update_flags(&mut self, operand: u8) -> u8 {
         let result = operand >> 1;
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if (operand & 0x01) != 0 {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         if result == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         result
     }
 
     fn run_bit_u8_and_update_flags(&mut self, operand: u8, bit: u8) {
-        self.status_flags &= STATUS_FLAG_C;
-        self.status_flags |= STATUS_FLAG_H;
+        self.status_flags &= StatusFlags::C;
+        self.status_flags |= StatusFlags::H;
 
         if (operand & bit) == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
     }
 }
@@ -1068,10 +1071,10 @@ impl Cpu {
     fn op_rlca(&mut self) {
         let carry = (self.registers.register_a & 0x80) != 0;
         self.registers.register_a = self.registers.register_a.wrapping_shl(1);
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if carry {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
             self.registers.register_a |= 0x01;
         }
     }
@@ -1139,10 +1142,10 @@ impl Cpu {
     fn op_rrca(&mut self) {
         let carry = (self.registers.register_a & 0x01) != 0;
         self.registers.register_a = self.registers.register_a.wrapping_shr(1);
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if carry {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
             self.registers.register_a |= 0x80;
         }
     }
@@ -1201,14 +1204,14 @@ impl Cpu {
         let carry = (self.registers.register_a & 0x80) != 0;
         self.registers.register_a = self.registers.register_a.wrapping_shl(1);
 
-        if (self.status_flags & STATUS_FLAG_C) != 0 {
+        if (self.status_flags & StatusFlags::C) != 0 {
             self.registers.register_a |= 0x01;
         }
 
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if carry {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
     }
 
@@ -1274,14 +1277,14 @@ impl Cpu {
         let carry = (self.registers.register_a & 0x01) != 0;
         self.registers.register_a = self.registers.register_a.wrapping_shr(1);
 
-        if (self.status_flags & STATUS_FLAG_C) != 0 {
+        if (self.status_flags & StatusFlags::C) != 0 {
             self.registers.register_a |= 0x80;
         }
 
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if carry {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
     }
 
@@ -1294,7 +1297,7 @@ impl Cpu {
     fn op_jp_nz_r8(&mut self) {
         let offset = self.fetch_u8() as i8;
 
-        if (self.status_flags & STATUS_FLAG_Z) == 0 {
+        if (self.status_flags & StatusFlags::Z) == 0 {
             // TODO: add extra cycle
             self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
         }
@@ -1358,32 +1361,32 @@ impl Cpu {
     fn op_daa(&mut self) {
         let mut current_value = self.registers.register_a as u16;
 
-        if (self.status_flags & STATUS_FLAG_N) == 0 {
-            if (self.status_flags & STATUS_FLAG_H) != 0 || (current_value & 0x0F) > 0x09 {
+        if (self.status_flags & StatusFlags::N) == 0 {
+            if (self.status_flags & StatusFlags::H) != 0 || (current_value & 0x0F) > 0x09 {
                 current_value = current_value.wrapping_add(0x06);
             }
 
-            if (self.status_flags & STATUS_FLAG_C) != 0 || current_value > 0x9F {
+            if (self.status_flags & StatusFlags::C) != 0 || current_value > 0x9F {
                 current_value = current_value.wrapping_add(0x60);
             }
         } else {
-            if (self.status_flags & STATUS_FLAG_H) != 0 {
+            if (self.status_flags & StatusFlags::H) != 0 {
                 current_value = current_value.wrapping_sub(0x06) & 0xFF;
             }
 
-            if (self.status_flags & STATUS_FLAG_C) != 0 {
+            if (self.status_flags & StatusFlags::C) != 0 {
                 current_value = current_value.wrapping_sub(0x60);
             }
         }
 
-        self.status_flags &= !(STATUS_FLAG_Z | STATUS_FLAG_H);
+        self.status_flags &= !(StatusFlags::Z | StatusFlags::H);
 
         if (current_value & 0xFF) == 0 {
-            self.status_flags |= STATUS_FLAG_Z;
+            self.status_flags |= StatusFlags::Z;
         }
 
         if (current_value & 0x0100) == 0x100 {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         self.registers.register_a = (current_value & 0xFF) as u8;
@@ -1398,7 +1401,7 @@ impl Cpu {
     fn op_jp_z_r8(&mut self) {
         let offset = self.fetch_u8() as i8;
 
-        if (self.status_flags & STATUS_FLAG_Z) != 0 {
+        if (self.status_flags & StatusFlags::Z) != 0 {
             // TODO: add extra cycle
             self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
         }
@@ -1459,7 +1462,7 @@ impl Cpu {
     /// machine cycle).
     fn op_cpl(&mut self) {
         self.registers.register_a = !self.registers.register_a;
-        self.status_flags |= STATUS_FLAG_H | STATUS_FLAG_N;
+        self.status_flags |= StatusFlags::H | StatusFlags::N;
     }
 
     /// Opcode 0x30: [JR NC,r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=109)
@@ -1471,7 +1474,7 @@ impl Cpu {
     fn op_jp_nc_r8(&mut self) {
         let offset = self.fetch_u8() as i8;
 
-        if (self.status_flags & STATUS_FLAG_C) == 0 {
+        if (self.status_flags & StatusFlags::C) == 0 {
             // TODO: add extra cycle
             self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
         }
@@ -1539,8 +1542,8 @@ impl Cpu {
     ///
     /// Sets the carry flag, and clears the N and H flags (1 machine cycle).
     fn op_scf(&mut self) {
-        self.status_flags |= STATUS_FLAG_C;
-        self.status_flags &= !(STATUS_FLAG_H | STATUS_FLAG_N);
+        self.status_flags |= StatusFlags::C;
+        self.status_flags &= !(StatusFlags::H | StatusFlags::N);
     }
 
     /// Opcode 0x38: [JR C,r8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=109)
@@ -1552,7 +1555,7 @@ impl Cpu {
     fn op_jp_c_r8(&mut self) {
         let offset = self.fetch_u8() as i8;
 
-        if (self.status_flags & STATUS_FLAG_C) != 0 {
+        if (self.status_flags & StatusFlags::C) != 0 {
             // TODO: add extra cycle
             self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
         }
@@ -1611,8 +1614,8 @@ impl Cpu {
     ///
     /// Flips the carry flag, and clears the N and H flags (1 machine cycle).
     fn op_ccf(&mut self) {
-        self.status_flags ^= STATUS_FLAG_C;
-        self.status_flags &= !(STATUS_FLAG_H | STATUS_FLAG_N);
+        self.status_flags ^= StatusFlags::C;
+        self.status_flags &= !(StatusFlags::H | StatusFlags::N);
     }
 
     /// Opcode 0x40: [LD B,B](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
@@ -2603,7 +2606,7 @@ impl Cpu {
     /// cycles).
     fn op_ret_nz(&mut self) {
         // TODO: extra dummy cycle
-        if (self.status_flags & STATUS_FLAG_Z) == 0 {
+        if (self.status_flags & StatusFlags::Z) == 0 {
             // TODO: extra dummy cycle
             self.program_counter = self.stack_pop_u16();
         }
@@ -2626,7 +2629,7 @@ impl Cpu {
     fn op_jp_nz_a16(&mut self) {
         let address = self.fetch_u16();
 
-        if (self.status_flags & STATUS_FLAG_Z) == 0 {
+        if (self.status_flags & StatusFlags::Z) == 0 {
             // TODO: add extra cycle
             self.program_counter = address;
         }
@@ -2650,7 +2653,7 @@ impl Cpu {
     fn op_call_nz_a16(&mut self) {
         let address = self.fetch_u16();
 
-        if (self.status_flags & STATUS_FLAG_Z) == 0 {
+        if (self.status_flags & StatusFlags::Z) == 0 {
             // TODO: need extra cycle
             self.stack_push_u16(self.program_counter);
             self.program_counter = address;
@@ -2688,7 +2691,7 @@ impl Cpu {
     /// cycles).
     fn op_ret_z(&mut self) {
         // TODO: extra dummy cycle
-        if (self.status_flags & STATUS_FLAG_Z) != 0 {
+        if (self.status_flags & StatusFlags::Z) != 0 {
             // TODO: extra dummy cycle
             self.program_counter = self.stack_pop_u16();
         }
@@ -2711,7 +2714,7 @@ impl Cpu {
     fn op_jp_z_a16(&mut self) {
         let address = self.fetch_u16();
 
-        if (self.status_flags & STATUS_FLAG_Z) != 0 {
+        if (self.status_flags & StatusFlags::Z) != 0 {
             // TODO: add extra cycle
             self.program_counter = address;
         }
@@ -2734,7 +2737,7 @@ impl Cpu {
     fn op_call_z_a16(&mut self) {
         let address = self.fetch_u16();
 
-        if (self.status_flags & STATUS_FLAG_Z) != 0 {
+        if (self.status_flags & StatusFlags::Z) != 0 {
             // TODO: need extra cycle
             self.stack_push_u16(self.program_counter);
             self.program_counter = address;
@@ -2774,7 +2777,7 @@ impl Cpu {
     /// cycles).
     fn op_ret_nc(&mut self) {
         // TODO: extra dummy cycle
-        if (self.status_flags & STATUS_FLAG_C) == 0 {
+        if (self.status_flags & StatusFlags::C) == 0 {
             // TODO: extra dummy cycle
             self.program_counter = self.stack_pop_u16();
         }
@@ -2797,7 +2800,7 @@ impl Cpu {
     fn op_jp_nc_a16(&mut self) {
         let address = self.fetch_u16();
 
-        if (self.status_flags & STATUS_FLAG_C) == 0 {
+        if (self.status_flags & StatusFlags::C) == 0 {
             // TODO: add extra cycle
             self.program_counter = address;
         }
@@ -2812,7 +2815,7 @@ impl Cpu {
     fn op_call_nc_a16(&mut self) {
         let address = self.fetch_u16();
 
-        if (self.status_flags & STATUS_FLAG_C) == 0 {
+        if (self.status_flags & StatusFlags::C) == 0 {
             // TODO: need extra cycle
             self.stack_push_u16(self.program_counter);
             self.program_counter = address;
@@ -2850,7 +2853,7 @@ impl Cpu {
     /// cycles).
     fn op_ret_c(&mut self) {
         // TODO: extra dummy cycle
-        if (self.status_flags & STATUS_FLAG_C) != 0 {
+        if (self.status_flags & StatusFlags::C) != 0 {
             // TODO: extra dummy cycle
             self.program_counter = self.stack_pop_u16();
         }
@@ -2875,7 +2878,7 @@ impl Cpu {
     fn op_jp_c_a16(&mut self) {
         let address = self.fetch_u16();
 
-        if (self.status_flags & STATUS_FLAG_C) != 0 {
+        if (self.status_flags & StatusFlags::C) != 0 {
             // TODO: add extra cycle
             self.program_counter = address;
         }
@@ -2890,7 +2893,7 @@ impl Cpu {
     fn op_call_c_a16(&mut self) {
         let address = self.fetch_u16();
 
-        if (self.status_flags & STATUS_FLAG_C) != 0 {
+        if (self.status_flags & StatusFlags::C) != 0 {
             // TODO: need extra cycle
             self.stack_push_u16(self.program_counter);
             self.program_counter = address;
@@ -2981,14 +2984,14 @@ impl Cpu {
 
         // TODO: This op is supposed to be 4 machine cycles long, needs 2 extra dummy cycles
         let stack_pointer = (self.stack_pointer as i32).wrapping_add(offset as i32) as u16;
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
 
         if ((self.stack_pointer & 0x0F).wrapping_add(offset as u16 & 0x0F)) > 0x0F {
-            self.status_flags |= STATUS_FLAG_H;
+            self.status_flags |= StatusFlags::H;
         }
 
         if ((self.stack_pointer & 0xFF).wrapping_add(offset as u16 & 0xFF)) > 0xFF {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
 
         self.stack_pointer = stack_pointer;
@@ -3048,7 +3051,7 @@ impl Cpu {
     /// F register value, so all flags are changed based on the 8-bit data that is read
     /// from memory (3 machine cycles).
     fn op_pop_af(&mut self) {
-        self.status_flags = self.stack_pop_u8() & 0xF0;
+        self.status_flags.bits = self.stack_pop_u8() & 0xF0;
         self.registers.register_a = self.stack_pop_u8();
     }
 
@@ -3076,7 +3079,7 @@ impl Cpu {
     /// Push to the stack memory, data from the 16-bit register AF (4 machine cycles).
     fn op_push_af(&mut self) {
         self.stack_push_u8(self.registers.register_a);
-        self.stack_push_u8(self.status_flags);
+        self.stack_push_u8(self.status_flags.bits());
     }
 
     /// Opcode 0xF6: [OR d8](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=64)
@@ -3104,17 +3107,17 @@ impl Cpu {
     fn op_ld_hl_sp_i8(&mut self) {
         let offset = self.fetch_u8() as i8;
 
-        self.status_flags = 0;
+        self.status_flags = StatusFlags::none();
         self.registers
             .set_hl((self.stack_pointer as i32).wrapping_add(offset as i32) as u16);
 
         // TODO: check type convertion...
         if ((self.stack_pointer & 0x0F) + (offset as u16 & 0x0F)) > 0x0F {
-            self.status_flags |= STATUS_FLAG_H;
+            self.status_flags |= StatusFlags::H;
         }
 
         if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
-            self.status_flags |= STATUS_FLAG_C;
+            self.status_flags |= StatusFlags::C;
         }
     }
 
@@ -5036,73 +5039,67 @@ mod tests {
 
     use super::Cpu;
 
-    #[derive(Debug)]
     struct TestLogger {
-        log: String,
+        logs: String,
         completed: bool,
     }
 
-    #[derive(Debug)]
+    impl TestLogger {
+        fn new() -> Self {
+            Self {
+                logs: String::new(),
+                completed: false,
+            }
+        }
+    }
+
     struct TestMemoryController {
-        memory: RefCell<Vec<u8>>,
-        logger: RefCell<TestLogger>,
+        memory: Vec<u8>,
+        logger: Rc<RefCell<TestLogger>>,
     }
 
     impl TestMemoryController {
-        fn new(rom: &[u8]) -> Self {
+        fn new(rom: &[u8], logger: Rc<RefCell<TestLogger>>) -> Self {
             let mut memory = vec![0; 0x10000];
             memory[..rom.len()].copy_from_slice(rom);
 
-            Self {
-                memory: RefCell::new(memory),
-                logger: RefCell::new(TestLogger {
-                    log: String::new(),
-                    completed: false,
-                }),
-            }
-        }
-
-        fn should_continue(&self) -> bool {
-            !self.logger.borrow().completed
-        }
-
-        fn log(&self) -> String {
-            self.logger.borrow().log.clone()
+            Self { memory, logger }
         }
     }
 
     impl MemoryController for TestMemoryController {
         fn read(&self, address: u16) -> u8 {
-            self.memory.borrow()[address as usize]
+            self.memory[address as usize]
         }
 
-        fn write(&self, address: u16, value: u8) {
+        fn cycle_write(&mut self, address: u16, value: u8) {
             if address == 0xFF01 {
                 let mut logger = self.logger.borrow_mut();
 
-                logger.log.push(value as char);
+                logger.logs.push(value as char);
 
-                if logger.log.ends_with("Passed") || logger.log.ends_with("Failed") {
+                if logger.logs.ends_with("Passed") || logger.logs.ends_with("Failed") {
                     logger.completed = true;
                 }
             }
 
-            self.memory.borrow_mut()[address as usize] = value;
+            self.memory[address as usize] = value;
         }
     }
 
     fn run_test_rom(rom: &[u8]) {
-        let memory = Rc::new(TestMemoryController::new(rom));
-        let mut cpu = Cpu::new(memory.clone());
+        let logger = Rc::new(RefCell::new(TestLogger::new()));
+        let memory = TestMemoryController::new(rom, logger.clone());
+        let mut cpu = Cpu::new(Box::new(memory));
 
-        while memory.should_continue() {
+        while !logger.borrow().completed {
             cpu.tick();
         }
 
-        let log = memory.log();
+        let logs = logger.borrow().logs.clone();
 
-        if log.ends_with("Failed") {
-            panic!("Test failed\n{}", log);
+        if logs.ends_with("Failed") {
+            panic!("Test failed\n{}", logs);
         }
     }
 
