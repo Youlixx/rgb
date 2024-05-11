@@ -1,6 +1,6 @@
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
-use super::memory::Memory;
+use super::memory::MemoryController;
 
 const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_nop,         // 0x00 : NOP
@@ -577,8 +577,7 @@ impl CpuRegisters {
 }
 
 pub struct Cpu {
-    // memory: Box<dyn Memory>,
-    memory: Rc<RefCell<dyn Memory>>,
+    memory: Rc<dyn MemoryController>,
     program_counter: u16,
 
     registers: CpuRegisters,
@@ -590,7 +589,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(memory: Rc<RefCell<dyn Memory>>) -> Self {
+    pub fn new(memory: Rc<dyn MemoryController>) -> Self {
         Self {
             memory,
             program_counter: 0x0100,
@@ -613,11 +612,11 @@ impl Cpu {
     }
 
     fn read(&mut self, address: u16) -> u8 {
-        self.memory.borrow_mut().read(address)
+        self.memory.read(address)
     }
 
     fn write(&mut self, address: u16, value: u8) {
-        self.memory.borrow_mut().write(address, value);
+        self.memory.write(address, value);
     }
 
     fn read_hl(&mut self) -> u8 {
@@ -5033,14 +5032,20 @@ impl Cpu {
 mod tests {
     use std::{cell::RefCell, rc::Rc};
 
-    use crate::emulator::memory::Memory;
+    use crate::emulator::memory::MemoryController;
 
     use super::Cpu;
 
-    struct TestMemoryController {
-        memory: Vec<u8>,
+    #[derive(Debug)]
+    struct TestLogger {
         log: String,
         completed: bool,
+    }
+
+    #[derive(Debug)]
+    struct TestMemoryController {
+        memory: RefCell<Vec<u8>>,
+        logger: RefCell<TestLogger>,
     }
 
     impl TestMemoryController {
@@ -5049,40 +5054,52 @@ mod tests {
             memory[..rom.len()].copy_from_slice(rom);
 
             Self {
-                memory,
-                log: String::new(),
-                completed: false,
+                memory: RefCell::new(memory),
+                logger: RefCell::new(TestLogger {
+                    log: String::new(),
+                    completed: false,
+                }),
             }
+        }
+
+        fn should_continue(&self) -> bool {
+            !self.logger.borrow().completed
+        }
+
+        fn log(&self) -> String {
+            self.logger.borrow().log.clone()
         }
     }
 
-    impl Memory for TestMemoryController {
-        fn read(&mut self, address: u16) -> u8 {
-            self.memory[address as usize]
+    impl MemoryController for TestMemoryController {
+        fn read(&self, address: u16) -> u8 {
+            self.memory.borrow()[address as usize]
         }
 
-        fn write(&mut self, address: u16, value: u8) {
+        fn write(&self, address: u16, value: u8) {
             if address == 0xFF01 {
-                self.log.push(value as char);
+                let mut logger = self.logger.borrow_mut();
 
-                if self.log.ends_with("Passed") || self.log.ends_with("Failed") {
-                    self.completed = true;
+                logger.log.push(value as char);
+
+                if logger.log.ends_with("Passed") || logger.log.ends_with("Failed") {
+                    logger.completed = true;
                 }
             }
 
-            self.memory[address as usize] = value;
+            self.memory.borrow_mut()[address as usize] = value;
         }
     }
 
     fn run_test_rom(rom: &[u8]) {
-        let memory = Rc::new(RefCell::new(TestMemoryController::new(rom)));
+        let memory = Rc::new(TestMemoryController::new(rom));
         let mut cpu = Cpu::new(memory.clone());
 
-        while !memory.borrow().completed {
+        while memory.should_continue() {
             cpu.tick();
         }
 
-        let log = memory.borrow().log.clone();
+        let log = memory.log();
 
         if log.ends_with("Failed") {
             panic!("Test failed\n{}", log);
@@ -5092,6 +5109,12 @@ mod tests {
     #[test]
     fn test_rom_special() {
         let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/01-special.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_interrupts() {
+        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/02-interrupts.gb");
         run_test_rom(rom);
     }
 
