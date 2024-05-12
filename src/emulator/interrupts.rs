@@ -1,7 +1,5 @@
-use bitmask_enum::bitmask;
-
-#[bitmask(u8)]
-pub enum InterruptFlags {
+#[repr(u8)]
+pub enum InterruptSource {
     VBlank = 0x01,
     Lcd = 0x02,
     Timer = 0x04,
@@ -9,76 +7,75 @@ pub enum InterruptFlags {
     Joypad = 0x10,
 }
 
+impl InterruptSource {
+    const INTERRUPT_ADDRESSES: [(InterruptSource, usize); 5] = [
+        (InterruptSource::VBlank, 0x40),
+        (InterruptSource::Lcd, 0x48),
+        (InterruptSource::Timer, 0x50),
+        (InterruptSource::Serial, 0x58),
+        (InterruptSource::Joypad, 0x60),
+    ];
+}
+
 #[derive(Debug)]
 pub struct Interrupts {
-    enable: InterruptFlags,
-    flags: InterruptFlags,
+    enable: u8,
+    flags: u8,
 }
 
 impl Interrupts {
-    const PROGRAM_COUNTER_VBLANK: usize = 0x40;
-    const PROGRAM_COUNTER_LCD: usize = 0x48;
-    const PROGRAM_COUNTER_TIMER: usize = 0x50;
-    const PROGRAM_COUNTER_SERIAL: usize = 0x58;
-    const PROGRAM_COUNTER_JOYPAD: usize = 0x60;
-
     pub fn new() -> Self {
         Self {
-            enable: InterruptFlags::none(),
-            flags: InterruptFlags::none(),
+            enable: 0xFF,
+            flags: 0xFF,
         }
     }
 
-    pub fn update_flags(&mut self, flag: Option<InterruptFlags>) {
+    pub fn update_flags(&mut self, flag: Option<InterruptSource>) {
         if let Some(flag) = flag {
-            self.flags |= flag;
+            self.flags |= flag as u8;
         }
     }
 
     pub fn read_flags(&self) -> u8 {
-        self.flags.bits
+        self.flags
     }
 
     pub fn read_enable(&self) -> u8 {
-        self.enable.bits
+        self.enable
     }
 
     pub fn write_flags(&mut self, flags: u8) {
-        self.flags.bits = flags;
+        self.flags = flags;
     }
 
     pub fn write_enable(&mut self, enable: u8) {
-        self.enable.bits = enable;
+        self.enable = enable;
     }
 
     pub fn should_interrupt(&self) -> bool {
-        !(self.enable & self.flags).is_none()
+        (self.enable & self.flags) != 0
     }
 
     pub fn get_program_counter_address(&mut self) -> Option<usize> {
         let interrupts = self.enable & self.flags;
 
-        if interrupts.is_none() {
+        if interrupts & 0x1F == 0 {
             return None;
         }
 
-        if interrupts.contains(InterruptFlags::VBlank) {
-            self.flags &= !InterruptFlags::VBlank;
-            return Some(Interrupts::PROGRAM_COUNTER_VBLANK);
-        } else if interrupts.contains(InterruptFlags::Lcd) {
-            self.flags &= !InterruptFlags::Lcd;
-            return Some(Interrupts::PROGRAM_COUNTER_LCD);
-        } else if interrupts.contains(InterruptFlags::Timer) {
-            self.flags &= !InterruptFlags::Timer;
-            return Some(Interrupts::PROGRAM_COUNTER_TIMER);
-        } else if interrupts.contains(InterruptFlags::Serial) {
-            self.flags &= !InterruptFlags::Serial;
-            return Some(Interrupts::PROGRAM_COUNTER_SERIAL);
-        } else if interrupts.contains(InterruptFlags::Joypad) {
-            self.flags &= !InterruptFlags::Joypad;
-            return Some(Interrupts::PROGRAM_COUNTER_JOYPAD);
-        }
+        InterruptSource::INTERRUPT_ADDRESSES
+            .into_iter()
+            .find_map(|(source, program_counter)| {
+                let flag = source as u8;
 
-        unreachable!()
+                if self.flags & flag != 0 {
+                    self.flags &= !flag;
+
+                    Some(program_counter)
+                } else {
+                    None
+                }
+            })
     }
 }

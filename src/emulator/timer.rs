@@ -1,4 +1,4 @@
-use super::{interrupts::InterruptFlags, Tickable};
+use super::{interrupts::InterruptSource, Tickable};
 
 #[derive(Debug)]
 struct TacRegister(u8);
@@ -104,13 +104,13 @@ impl Timer {
     }
 }
 
-impl Tickable<Option<InterruptFlags>> for Timer {
+impl Tickable<Option<InterruptSource>> for Timer {
     #[must_use]
-    fn tick(&mut self) -> Option<InterruptFlags> {
+    fn tick(&mut self) -> Option<InterruptSource> {
         self.divider.tick();
 
         if self.control.is_enabled() {
-            self.counter.tick().then_some(InterruptFlags::Timer)
+            self.counter.tick().then_some(InterruptSource::Timer)
         } else {
             None
         }
