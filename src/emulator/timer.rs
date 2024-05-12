@@ -1,5 +1,6 @@
 use super::{interrupts::InterruptFlags, Tickable};
 
+#[derive(Debug)]
 struct TacRegister(u8);
 
 impl TacRegister {
@@ -18,6 +19,7 @@ impl TacRegister {
     }
 }
 
+#[derive(Debug)]
 struct SlowCounter {
     counter: u8,
     tick: u8,
@@ -56,6 +58,7 @@ impl Tickable<bool> for SlowCounter {
     }
 }
 
+#[derive(Debug)]
 pub struct Timer {
     divider: SlowCounter,
     counter: SlowCounter,

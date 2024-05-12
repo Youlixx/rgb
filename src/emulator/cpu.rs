@@ -589,6 +589,7 @@ pub struct Cpu {
 
     interrupt_master_toggle: bool,
     interrupt_master_enabled: bool,
+    halted: bool
 }
 
 impl Cpu {
@@ -601,20 +602,32 @@ impl Cpu {
             stack_pointer: 0,
             interrupt_master_toggle: false,
             interrupt_master_enabled: false,
+            halted: false
         }
     }
 
     pub fn tick(&mut self) {
         self.handle_interrupts();
 
+        if self.interrupt_master_toggle {
+            self.interrupt_master_enabled = true;
+            self.interrupt_master_toggle = false;
+        }
+
+        if self.halted {
+            self.memory.cycle_read(0x0000); // TODO proper dummy read???
+            return;
+        }
+
         let opcode = self.fetch_u8();
         OP_CODE_FUNCTION_TABLE[opcode as usize](self);
     }
 
     fn handle_interrupts(&mut self) {
-        if self.interrupt_master_toggle {
-            self.interrupt_master_enabled = true;
-            self.interrupt_master_toggle = false;
+        if !self.memory.interrupts.should_interrupt() {
+            return;
+        } else {
+            self.halted = false;
         }
 
         if !self.interrupt_master_enabled {
@@ -624,6 +637,7 @@ impl Cpu {
         if let Some(program_counter) = self.memory.interrupts.get_program_counter_address() {
             self.stack_push_u16(self.program_counter);
             self.interrupt_master_enabled = false;
+            self.halted = false;
             self.program_counter = program_counter as u16;
         }
     }
@@ -2012,7 +2026,7 @@ impl Cpu {
 
     /// Opcode 0x75: [HALT](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=118)
     fn op_halt(&mut self) {
-        panic!("Opcode not implemented! (HALT)");
+        self.halted = true;
     }
 
     /// Opcode 0x77: [LD (HL),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)

@@ -9,6 +9,7 @@ pub enum InterruptFlags {
     Joypad = 0x10,
 }
 
+#[derive(Debug)]
 pub struct Interrupts {
     enable: InterruptFlags,
     flags: InterruptFlags,
@@ -16,10 +17,10 @@ pub struct Interrupts {
 
 impl Interrupts {
     const PROGRAM_COUNTER_VBLANK: usize = 0x40;
-    const PROGRAM_COUNTER_LCD: usize = 0x40;
-    const PROGRAM_COUNTER_TIMER: usize = 0x40;
-    const PROGRAM_COUNTER_SERIAL: usize = 0x40;
-    const PROGRAM_COUNTER_JOYPAD: usize = 0x40;
+    const PROGRAM_COUNTER_LCD: usize = 0x48;
+    const PROGRAM_COUNTER_TIMER: usize = 0x50;
+    const PROGRAM_COUNTER_SERIAL: usize = 0x58;
+    const PROGRAM_COUNTER_JOYPAD: usize = 0x60;
 
     pub fn new() -> Self {
         Self {
@@ -48,6 +49,10 @@ impl Interrupts {
 
     pub fn write_enable(&mut self, enable: u8) {
         self.enable.bits = enable;
+    }
+
+    pub fn should_interrupt(&self) -> bool {
+        !(self.enable & self.flags).is_none()
     }
 
     pub fn get_program_counter_address(&mut self) -> Option<usize> {

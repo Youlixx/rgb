@@ -20,7 +20,7 @@ pub struct ConsoleMemory {
     pub last_address: usize, // TODO: temporary, for testing purposes.
 
     memory: Vec<u8>, // TODO: temporary, not everything needs to be mapped... + mirroring
-    timer: Timer,
+    pub timer: Timer,
 }
 
 impl ConsoleMemory {
