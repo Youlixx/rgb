@@ -600,7 +600,7 @@ impl Cpu {
             status_flags: StatusFlags::none(),
             stack_pointer: 0,
             interrupt_master_toggle: false,
-            interrupt_master_enabled: false
+            interrupt_master_enabled: false,
         }
     }
 
@@ -5047,84 +5047,24 @@ impl Cpu {
 
 #[cfg(test)]
 mod tests {
-    use std::{cell::RefCell, rc::Rc};
-
-    use crate::emulator::memory::{ConsoleMemory, Memory, TickMemory};
+    use crate::emulator::memory::{ConsoleMemory, Memory};
 
     use super::Cpu;
 
-    struct Logger {
-        logs: String,
-        completed: bool,
-    }
-
-    impl Logger {
-        fn new() -> Self {
-            Self {
-                logs: String::new(),
-                completed: false,
-            }
-        }
-    }
-
-    struct TestMemory {
-        memory: Vec<u8>,
-        logger: Rc<RefCell<Logger>>,
-    }
-
-    impl TestMemory {
-        fn new(rom: &[u8], logger: Rc<RefCell<Logger>>) -> Self {
-            let mut memory = vec![0; 0x10000];
-            memory[..rom.len()].copy_from_slice(rom);
-
-            Self { memory, logger }
-        }
-    }
-
-    impl Memory for TestMemory {
-        fn silent_read(&self, address: usize) -> u8 {
-            self.memory[address]
-        }
-
-        fn silent_write(&mut self, address: usize, value: u8) {
-            self.memory[address] = value;
-        }
-    }
-
-    impl TickMemory for TestMemory {
-        fn cycle_write(&mut self, address: usize, value: u8) {
-            if address == 0xFF01 {
-                let mut logger = self.logger.borrow_mut();
-
-                logger.logs.push(value as char);
-
-                if logger.logs.ends_with("Passed") || logger.logs.ends_with("Failed") {
-                    logger.completed = true;
-                }
-            }
-
-            self.silent_write(address, value);
-        }
-    }
-
     fn run_test_rom(rom: &[u8]) {
-        let mut logger = Logger::new();
+        let mut logs = String::new();
         let mut cpu = Cpu::new(ConsoleMemory::new(rom));
 
-        while !logger.completed {
+        while !logs.ends_with("Passed") && !logs.ends_with("Failed") {
             cpu.tick();
 
             if cpu.memory.last_address == 0xFF01 {
-                logger.logs.push(cpu.memory.silent_read(cpu.memory.last_address) as char);
-
-                if logger.logs.ends_with("Passed") || logger.logs.ends_with("Failed") {
-                    logger.completed = true;
-                }
+                logs.push(cpu.memory.silent_read(cpu.memory.last_address) as char);
             }
         }
 
-        if logger.logs.ends_with("Failed") {
-            panic!("Test failed\n{}", logger.logs);
+        if logs.ends_with("Failed") {
+            panic!("Test failed\n{}", logs);
         }
     }
 

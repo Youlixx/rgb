@@ -11,7 +11,7 @@ pub enum InterruptFlags {
 
 pub struct Interrupts {
     enable: InterruptFlags,
-    flags: InterruptFlags
+    flags: InterruptFlags,
 }
 
 impl Interrupts {
@@ -20,11 +20,11 @@ impl Interrupts {
     const PROGRAM_COUNTER_TIMER: usize = 0x40;
     const PROGRAM_COUNTER_SERIAL: usize = 0x40;
     const PROGRAM_COUNTER_JOYPAD: usize = 0x40;
-    
+
     pub fn new() -> Self {
         Self {
             enable: InterruptFlags::none(),
-            flags: InterruptFlags::none()
+            flags: InterruptFlags::none(),
         }
     }
 

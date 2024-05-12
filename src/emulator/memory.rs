@@ -1,6 +1,5 @@
 use super::{interrupts::Interrupts, timer::Timer, Tickable as _};
 
-
 pub trait Memory {
     fn silent_read(&self, address: usize) -> u8;
     fn silent_write(&mut self, address: usize, value: u8);
@@ -18,10 +17,10 @@ pub trait TickMemory: Memory {
 
 pub struct ConsoleMemory {
     pub interrupts: Interrupts,
-    pub last_address: usize,  // TODO: temporary, for testing purposes.
+    pub last_address: usize, // TODO: temporary, for testing purposes.
 
-    memory: Vec<u8>,  // TODO: temporary, not everything needs to be mapped... + mirroring
-    timer: Timer
+    memory: Vec<u8>, // TODO: temporary, not everything needs to be mapped... + mirroring
+    timer: Timer,
 }
 
 impl ConsoleMemory {
@@ -41,7 +40,7 @@ impl ConsoleMemory {
             memory,
             last_address: 0x0000,
             interrupts: Interrupts::new(),
-            timer: Timer::new()
+            timer: Timer::new(),
         }
     }
 }
@@ -55,7 +54,7 @@ impl Memory for ConsoleMemory {
             ConsoleMemory::ADDRESS_TIMER_TAC => self.timer.read_tac(),
             ConsoleMemory::ADDRESS_INTERRUPTS_FLAGS => self.interrupts.read_flags(),
             ConsoleMemory::ADDRESS_INTERRUPTS_ENABLE => self.interrupts.read_enable(),
-            address => self.memory[address]
+            address => self.memory[address],
         }
     }
 
@@ -67,7 +66,7 @@ impl Memory for ConsoleMemory {
             ConsoleMemory::ADDRESS_TIMER_TAC => self.timer.write_tac(value),
             ConsoleMemory::ADDRESS_INTERRUPTS_FLAGS => self.interrupts.write_flags(value),
             ConsoleMemory::ADDRESS_INTERRUPTS_ENABLE => self.interrupts.write_enable(value),
-            address => self.memory[address] = value
+            address => self.memory[address] = value,
         }
     }
 }
@@ -84,4 +83,4 @@ impl TickMemory for ConsoleMemory {
         self.interrupts.update_flags(self.timer.tick());
         self.silent_write(address, value);
     }
-}   
+}

@@ -22,7 +22,7 @@ struct SlowCounter {
     counter: u8,
     tick: u8,
     reset: u8,
-    divider: u8
+    divider: u8,
 }
 
 impl SlowCounter {
@@ -31,7 +31,7 @@ impl SlowCounter {
             counter: 0,
             tick: 0,
             reset: 0,
-            divider
+            divider,
         }
     }
 }
@@ -42,7 +42,7 @@ impl Tickable<bool> for SlowCounter {
 
         if self.tick == self.divider {
             self.tick = 0;
-            
+
             if self.counter == 0xFF {
                 self.counter = self.reset;
 
@@ -89,7 +89,7 @@ impl Timer {
 
     pub fn reset_div(&mut self) {
         self.divider.counter = 0;
-    } 
+    }
 
     pub fn write_tma(&mut self, reset_value: u8) {
         self.counter.reset = reset_value;
