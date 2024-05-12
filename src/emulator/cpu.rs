@@ -1,6 +1,6 @@
 use bitmask_enum::bitmask;
 
-use super::memory::MemoryController;
+use super::memory::{ConsoleMemory, TickMemory};
 
 const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::op_nop,         // 0x00 : NOP
@@ -525,7 +525,7 @@ enum StatusFlags {
     Zero = 0x80,
     Negative = 0x40,
     HalfCarry = 0x20,
-    Carry = 0x10
+    Carry = 0x10,
 }
 
 struct CpuRegisters {
@@ -580,7 +580,7 @@ impl CpuRegisters {
 }
 
 pub struct Cpu {
-    memory: Box<dyn MemoryController>,
+    memory: Box<ConsoleMemory>,
     program_counter: u16,
 
     registers: CpuRegisters,
@@ -592,34 +592,48 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(memory: Box<dyn MemoryController>) -> Self {
+    pub fn new(memory: ConsoleMemory) -> Self {
         Self {
-            memory,
+            memory: Box::new(memory),
             program_counter: 0x0100,
             registers: CpuRegisters::new(),
             status_flags: StatusFlags::none(),
             stack_pointer: 0,
             interrupt_master_toggle: false,
-            interrupt_master_enabled: false,
+            interrupt_master_enabled: false
         }
     }
 
     pub fn tick(&mut self) {
-        if self.interrupt_master_toggle {
-            self.interrupt_master_enabled = true;
-            self.interrupt_master_toggle = false;
-        }
+        self.handle_interrupts();
 
         let opcode = self.fetch_u8();
         OP_CODE_FUNCTION_TABLE[opcode as usize](self);
     }
 
+    fn handle_interrupts(&mut self) {
+        if self.interrupt_master_toggle {
+            self.interrupt_master_enabled = true;
+            self.interrupt_master_toggle = false;
+        }
+
+        if !self.interrupt_master_enabled {
+            return;
+        }
+
+        if let Some(program_counter) = self.memory.interrupts.get_program_counter_address() {
+            self.stack_push_u16(self.program_counter);
+            self.interrupt_master_enabled = false;
+            self.program_counter = program_counter as u16;
+        }
+    }
+
     fn read(&mut self, address: u16) -> u8 {
-        self.memory.cycle_read(address)
+        self.memory.cycle_read(address as usize)
     }
 
     fn write(&mut self, address: u16, value: u8) {
-        self.memory.cycle_write(address, value);
+        self.memory.cycle_write(address as usize, value);
     }
 
     fn read_hl(&mut self) -> u8 {
@@ -1998,7 +2012,7 @@ impl Cpu {
 
     /// Opcode 0x75: [HALT](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=118)
     fn op_halt(&mut self) {
-        panic!("Opcode not implemented!");
+        panic!("Opcode not implemented! (HALT)");
     }
 
     /// Opcode 0x77: [LD (HL),A](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=15)
@@ -5035,16 +5049,16 @@ impl Cpu {
 mod tests {
     use std::{cell::RefCell, rc::Rc};
 
-    use crate::emulator::memory::MemoryController;
+    use crate::emulator::memory::{ConsoleMemory, Memory, TickMemory};
 
     use super::Cpu;
 
-    struct TestLogger {
+    struct Logger {
         logs: String,
         completed: bool,
     }
 
-    impl TestLogger {
+    impl Logger {
         fn new() -> Self {
             Self {
                 logs: String::new(),
@@ -5053,13 +5067,13 @@ mod tests {
         }
     }
 
-    struct TestMemoryController {
+    struct TestMemory {
         memory: Vec<u8>,
-        logger: Rc<RefCell<TestLogger>>,
+        logger: Rc<RefCell<Logger>>,
     }
 
-    impl TestMemoryController {
-        fn new(rom: &[u8], logger: Rc<RefCell<TestLogger>>) -> Self {
+    impl TestMemory {
+        fn new(rom: &[u8], logger: Rc<RefCell<Logger>>) -> Self {
             let mut memory = vec![0; 0x10000];
             memory[..rom.len()].copy_from_slice(rom);
 
@@ -5067,12 +5081,18 @@ mod tests {
         }
     }
 
-    impl MemoryController for TestMemoryController {
-        fn read(&self, address: u16) -> u8 {
-            self.memory[address as usize]
+    impl Memory for TestMemory {
+        fn silent_read(&self, address: usize) -> u8 {
+            self.memory[address]
         }
 
-        fn cycle_write(&mut self, address: u16, value: u8) {
+        fn silent_write(&mut self, address: usize, value: u8) {
+            self.memory[address] = value;
+        }
+    }
+
+    impl TickMemory for TestMemory {
+        fn cycle_write(&mut self, address: usize, value: u8) {
             if address == 0xFF01 {
                 let mut logger = self.logger.borrow_mut();
 
@@ -5083,23 +5103,28 @@ mod tests {
                 }
             }
 
-            self.memory[address as usize] = value;
+            self.silent_write(address, value);
         }
     }
 
     fn run_test_rom(rom: &[u8]) {
-        let logger = Rc::new(RefCell::new(TestLogger::new()));
-        let memory = TestMemoryController::new(rom, logger.clone());
-        let mut cpu = Cpu::new(Box::new(memory));
+        let mut logger = Logger::new();
+        let mut cpu = Cpu::new(ConsoleMemory::new(rom));
 
-        while !logger.borrow().completed {
+        while !logger.completed {
             cpu.tick();
+
+            if cpu.memory.last_address == 0xFF01 {
+                logger.logs.push(cpu.memory.silent_read(cpu.memory.last_address) as char);
+
+                if logger.logs.ends_with("Passed") || logger.logs.ends_with("Failed") {
+                    logger.completed = true;
+                }
+            }
         }
 
-        let logs = logger.borrow().logs.clone();
-
-        if logs.ends_with("Failed") {
-            panic!("Test failed\n{}", logs);
+        if logger.logs.ends_with("Failed") {
+            panic!("Test failed\n{}", logger.logs);
         }
     }
 
