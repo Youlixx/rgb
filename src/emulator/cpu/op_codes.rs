@@ -81,7 +81,7 @@ impl Cpu {
         let address = self.fetch_u16();
 
         self.write(address, (self.stack_pointer & 0xFF) as u8);
-        self.write(address + 1, (self.stack_pointer >> 8) as u8);
+        self.write(address.wrapping_add(1), (self.stack_pointer >> 8) as u8);
     }
 
     /// Opcode 0x09: [ADD HL,BC](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=35)
@@ -326,7 +326,7 @@ impl Cpu {
     fn op_ld_hl_inc_a(&mut self) {
         let address = self.registers.hl();
         self.write(address, self.registers.a());
-        self.registers.set_hl(address + 1);
+        self.registers.set_hl(address.wrapping_add(1));
     }
 
     /// Opcode 0x23: [INC HL](https://gekkio.fi/files/gb-docs/gbctr.pdf#page=72)
@@ -2158,11 +2158,11 @@ impl Cpu {
             .set_hl((self.stack_pointer as i32).wrapping_add(offset as i32) as u16);
 
         // TODO: check type convertion...
-        if ((self.stack_pointer & 0x0F) + (offset as u16 & 0x0F)) > 0x0F {
+        if (self.stack_pointer & 0x0F).wrapping_add(offset as u16 & 0x0F) > 0x0F {
             self.registers.update_status_flags(status_flag::HALF_CARRY);
         }
 
-        if ((self.stack_pointer & 0xFF) + (offset as u16 & 0xFF)) > 0xFF {
+        if (self.stack_pointer & 0xFF).wrapping_add(offset as u16 & 0xFF) > 0xFF {
             self.registers.update_status_flags(status_flag::CARRY);
         }
     }
