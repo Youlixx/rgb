@@ -1686,7 +1686,6 @@ impl Cpu {
         let address = self.fetch_u16();
 
         if (self.registers.status_flags() & status_flag::ZERO) == 0 {
-            self.dummy_cycle();
             self.stack_push(self.program_counter);
             self.program_counter = address;
         }
@@ -1770,7 +1769,6 @@ impl Cpu {
         let address = self.fetch_u16();
 
         if (self.registers.status_flags() & status_flag::ZERO) != 0 {
-            self.dummy_cycle();
             self.stack_push(self.program_counter);
             self.program_counter = address;
         }
@@ -1849,7 +1847,6 @@ impl Cpu {
         let address = self.fetch_u16();
 
         if (self.registers.status_flags() & status_flag::CARRY) == 0 {
-            self.dummy_cycle();
             self.stack_push(self.program_counter);
             self.program_counter = address;
         }
@@ -1927,7 +1924,6 @@ impl Cpu {
         let address = self.fetch_u16();
 
         if (self.registers.status_flags() & status_flag::CARRY) != 0 {
-            self.dummy_cycle();
             self.stack_push(self.program_counter);
             self.program_counter = address;
         }
@@ -2463,28 +2459,379 @@ pub const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
 
 #[cfg(test)]
 mod tests {
-    use crate::emulator::cpu::Cpu;
+    use crate::emulator::cpu::{status_flag, Cpu};
     use crate::emulator::interrupts::InterruptEmitter;
     use crate::emulator::memory::{ConsoleMemory, Memory};
     use crate::emulator::timer;
 
-    const OP_CODE_LENGTHS: [u8; 256] = [
-        1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, // 0x0X
-        0, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1, // 0x1X
-        0, 3, 2, 2, 1, 1, 2, 1, 0, 2, 2, 2, 1, 1, 2, 1, // 0x2X
-        0, 3, 2, 2, 3, 3, 3, 1, 0, 2, 2, 2, 1, 1, 2, 1, // 0x3X
-        1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 0x4X
-        1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 0x5X
-        1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 0x6X
-        2, 2, 2, 2, 2, 2, 0, 2, 1, 1, 1, 1, 1, 1, 2, 1, // 0x7X
-        1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 0x8X
-        1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 0x9X
-        1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 0xAX
-        1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 0xBX
-        0, 3, 0, 0, 0, 4, 2, 4, 2, 4, 0, 0, 0, 6, 2, 4, // 0xCX
-        0, 3, 0, 0, 0, 4, 2, 4, 2, 4, 0, 0, 0, 0, 2, 4, // 0xDX
-        3, 3, 2, 0, 0, 4, 2, 4, 4, 1, 4, 0, 0, 0, 2, 4, // 0xEX
-        3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4, // 0xFX
+    enum BranchCondition {
+        NonZero,
+        Zero,
+        NonCarry,
+        Carry,
+    }
+
+    impl BranchCondition {
+        fn is_valid(&self, status_flag: u8) -> bool {
+            match self {
+                BranchCondition::NonZero => (status_flag & status_flag::ZERO) == 0,
+                BranchCondition::Zero => (status_flag & status_flag::ZERO) != 0,
+                BranchCondition::NonCarry => (status_flag & status_flag::CARRY) == 0,
+                BranchCondition::Carry => (status_flag & status_flag::CARRY) != 0,
+            }
+        }
+    }
+
+    struct BranchTiming {
+        timing_skipped: u8,
+        timing_taken: u8,
+        condition: BranchCondition,
+    }
+
+    impl BranchTiming {
+        fn as_states_and_timings_iter(self) -> impl Iterator<Item = (u8, u8)> {
+            (0..0xFu8).into_iter().map(move |status_flag| {
+                let status_flag = status_flag << 4;
+
+                (
+                    status_flag,
+                    if self.condition.is_valid(status_flag) {
+                        self.timing_taken
+                    } else {
+                        self.timing_skipped
+                    },
+                )
+            })
+        }
+    }
+
+    enum Timing {
+        Constant(u8),
+        Branch(BranchTiming),
+        Ignored,
+    }
+
+    const OP_CODE_TIMINGS: [Timing; 256] = [
+        Timing::Constant(1), // 0x00 : NOP
+        Timing::Constant(3), // 0x01 : LD BC,d16
+        Timing::Constant(2), // 0x02 : LD (BC),A
+        Timing::Constant(2), // 0x03 : INC BC
+        Timing::Constant(1), // 0x04 : INC B
+        Timing::Constant(1), // 0x05 : DEC B
+        Timing::Constant(2), // 0x06 : LD B,d8
+        Timing::Constant(1), // 0x07 : RLCA
+        Timing::Constant(5), // 0x08 : LD (a16),SP
+        Timing::Constant(2), // 0x09 : ADD HL,BC
+        Timing::Constant(2), // 0x0A : LD A,(BC)
+        Timing::Constant(2), // 0x0B : DEC BC
+        Timing::Constant(1), // 0x0C : INC C
+        Timing::Constant(1), // 0x0D : DEC C
+        Timing::Constant(2), // 0x0E : LD C,d8
+        Timing::Constant(1), // 0x0F : RRCA
+        Timing::Ignored,     // 0x10 : STOP 0
+        Timing::Constant(3), // 0x11 : LD DE,d16
+        Timing::Constant(2), // 0x12 : LD (DE),A
+        Timing::Constant(2), // 0x13 : INC DE
+        Timing::Constant(1), // 0x14 : INC D
+        Timing::Constant(1), // 0x15 : DEC D
+        Timing::Constant(2), // 0x16 : LD D,d8
+        Timing::Constant(1), // 0x17 : RLA
+        Timing::Constant(3), // 0x18 : JR r8
+        Timing::Constant(2), // 0x19 : ADD HL,DE
+        Timing::Constant(2), // 0x1A : LD A,(DE)
+        Timing::Constant(2), // 0x1B : DEC DE
+        Timing::Constant(1), // 0x1C : INC E
+        Timing::Constant(1), // 0x1D : DEC E
+        Timing::Constant(2), // 0x1E : LD E,d8
+        Timing::Constant(1), // 0x1F : RRA
+        Timing::Branch(BranchTiming {
+            timing_skipped: 2,
+            timing_taken: 3,
+            condition: BranchCondition::NonZero,
+        }), // 0x20 : JR NZ,r8
+        Timing::Constant(3), // 0x21 : LD HL,d16
+        Timing::Constant(2), // 0x22 : LD (HL+),A
+        Timing::Constant(2), // 0x23 : INC HL
+        Timing::Constant(1), // 0x24 : INC H
+        Timing::Constant(1), // 0x25 : DEC H
+        Timing::Constant(2), // 0x26 : LD H,d8
+        Timing::Constant(1), // 0x27 : DAA
+        Timing::Branch(BranchTiming {
+            timing_skipped: 2,
+            timing_taken: 3,
+            condition: BranchCondition::Zero,
+        }), // 0x28 : JR Z,r8
+        Timing::Constant(2), // 0x29 : ADD HL,HL
+        Timing::Constant(2), // 0x2A : LD A,(HL+)
+        Timing::Constant(2), // 0x2B : DEC HL
+        Timing::Constant(1), // 0x2C : INC L
+        Timing::Constant(1), // 0x2D : DEC L
+        Timing::Constant(2), // 0x2E : LD L,d8
+        Timing::Constant(1), // 0x2F : CPL
+        Timing::Branch(BranchTiming {
+            timing_skipped: 2,
+            timing_taken: 3,
+            condition: BranchCondition::NonCarry,
+        }), // 0x30 : JR NC,r8
+        Timing::Constant(3), // 0x31 : LD SP,d16
+        Timing::Constant(2), // 0x32 : LD (HL-),A
+        Timing::Constant(2), // 0x33 : INC SP
+        Timing::Constant(3), // 0x34 : INC (HL)
+        Timing::Constant(3), // 0x35 : DEC (HL)
+        Timing::Constant(3), // 0x36 : LD (HL),d8
+        Timing::Constant(1), // 0x37 : SCF
+        Timing::Branch(BranchTiming {
+            timing_skipped: 2,
+            timing_taken: 3,
+            condition: BranchCondition::Carry,
+        }), // 0x38 : JR C,r8
+        Timing::Constant(2), // 0x39 : ADD HL,SP
+        Timing::Constant(2), // 0x3A : LD A,(HL-)
+        Timing::Constant(2), // 0x3B : DEC SP
+        Timing::Constant(1), // 0x3C : INC A
+        Timing::Constant(1), // 0x3D : DEC A
+        Timing::Constant(2), // 0x3E : LD A,d8
+        Timing::Constant(1), // 0x3F : CCF
+        Timing::Constant(1), // 0x40 : LD B,B
+        Timing::Constant(1), // 0x41 : LD B,C
+        Timing::Constant(1), // 0x42 : LD B,D
+        Timing::Constant(1), // 0x43 : LD B,E
+        Timing::Constant(1), // 0x44 : LD B,H
+        Timing::Constant(1), // 0x45 : LD B,L
+        Timing::Constant(2), // 0x46 : LD B,(HL)
+        Timing::Constant(1), // 0x47 : LD B,A
+        Timing::Constant(1), // 0x48 : LD C,B
+        Timing::Constant(1), // 0x49 : LD C,C
+        Timing::Constant(1), // 0x4A : LD C,D
+        Timing::Constant(1), // 0x4B : LD C,E
+        Timing::Constant(1), // 0x4C : LD C,H
+        Timing::Constant(1), // 0x4D : LD C,L
+        Timing::Constant(2), // 0x4E : LD C,(HL)
+        Timing::Constant(1), // 0x4F : LD C,A
+        Timing::Constant(1), // 0x50 : LD D,B
+        Timing::Constant(1), // 0x51 : LD D,C
+        Timing::Constant(1), // 0x52 : LD D,D
+        Timing::Constant(1), // 0x53 : LD D,E
+        Timing::Constant(1), // 0x54 : LD D,H
+        Timing::Constant(1), // 0x55 : LD D,L
+        Timing::Constant(2), // 0x56 : LD D,(HL)
+        Timing::Constant(1), // 0x57 : LD D,A
+        Timing::Constant(1), // 0x58 : LD E,B
+        Timing::Constant(1), // 0x59 : LD E,C
+        Timing::Constant(1), // 0x5A : LD E,D
+        Timing::Constant(1), // 0x5B : LD E,E
+        Timing::Constant(1), // 0x5C : LD E,H
+        Timing::Constant(1), // 0x5D : LD E,L
+        Timing::Constant(2), // 0x5E : LD E,(HL)
+        Timing::Constant(1), // 0x5F : LD E,A
+        Timing::Constant(1), // 0x60 : LD H,B
+        Timing::Constant(1), // 0x61 : LD H,C
+        Timing::Constant(1), // 0x62 : LD H,D
+        Timing::Constant(1), // 0x63 : LD H,E
+        Timing::Constant(1), // 0x64 : LD H,H
+        Timing::Constant(1), // 0x65 : LD H,L
+        Timing::Constant(2), // 0x66 : LD H,(HL)
+        Timing::Constant(1), // 0x67 : LD H,A
+        Timing::Constant(1), // 0x68 : LD L,B
+        Timing::Constant(1), // 0x69 : LD L,C
+        Timing::Constant(1), // 0x6A : LD L,D
+        Timing::Constant(1), // 0x6B : LD L,E
+        Timing::Constant(1), // 0x6C : LD L,H
+        Timing::Constant(1), // 0x6D : LD L,L
+        Timing::Constant(2), // 0x6E : LD L,(HL)
+        Timing::Constant(1), // 0x6F : LD L,A
+        Timing::Constant(2), // 0x70 : LD (HL),B
+        Timing::Constant(2), // 0x71 : LD (HL),C
+        Timing::Constant(2), // 0x72 : LD (HL),D
+        Timing::Constant(2), // 0x73 : LD (HL),E
+        Timing::Constant(2), // 0x74 : LD (HL),H
+        Timing::Constant(2), // 0x75 : LD (HL),L
+        Timing::Ignored,     // 0x76 : HALT
+        Timing::Constant(2), // 0x77 : LD (HL),A
+        Timing::Constant(1), // 0x78 : LD A,B
+        Timing::Constant(1), // 0x79 : LD A,C
+        Timing::Constant(1), // 0x7A : LD A,D
+        Timing::Constant(1), // 0x7B : LD A,E
+        Timing::Constant(1), // 0x7C : LD A,H
+        Timing::Constant(1), // 0x7D : LD A,L
+        Timing::Constant(2), // 0x7E : LD A,(HL)
+        Timing::Constant(1), // 0x7F : LD A,A
+        Timing::Constant(1), // 0x80 : ADD A,B
+        Timing::Constant(1), // 0x81 : ADD A,C
+        Timing::Constant(1), // 0x82 : ADD A,D
+        Timing::Constant(1), // 0x83 : ADD A,E
+        Timing::Constant(1), // 0x84 : ADD A,H
+        Timing::Constant(1), // 0x85 : ADD A,L
+        Timing::Constant(2), // 0x86 : ADD A,(HL)
+        Timing::Constant(1), // 0x87 : ADD A,A
+        Timing::Constant(1), // 0x88 : ADC A,B
+        Timing::Constant(1), // 0x89 : ADC A,C
+        Timing::Constant(1), // 0x8A : ADC A,D
+        Timing::Constant(1), // 0x8B : ADC A,E
+        Timing::Constant(1), // 0x8C : ADC A,H
+        Timing::Constant(1), // 0x8D : ADC A,L
+        Timing::Constant(2), // 0x8E : ADC A,(HL)
+        Timing::Constant(1), // 0x8F : ADC A,A
+        Timing::Constant(1), // 0x90 : SUB B
+        Timing::Constant(1), // 0x91 : SUB C
+        Timing::Constant(1), // 0x92 : SUB D
+        Timing::Constant(1), // 0x93 : SUB E
+        Timing::Constant(1), // 0x94 : SUB H
+        Timing::Constant(1), // 0x95 : SUB L
+        Timing::Constant(2), // 0x96 : SUB (HL)
+        Timing::Constant(1), // 0x97 : SUB A
+        Timing::Constant(1), // 0x98 : SBC A,B
+        Timing::Constant(1), // 0x99 : SBC A,C
+        Timing::Constant(1), // 0x9A : SBC A,D
+        Timing::Constant(1), // 0x9B : SBC A,E
+        Timing::Constant(1), // 0x9C : SBC A,H
+        Timing::Constant(1), // 0x9D : SBC A,L
+        Timing::Constant(2), // 0x9E : SBC A,(HL)
+        Timing::Constant(1), // 0x9F : SBC A,A
+        Timing::Constant(1), // 0xA0 : AND B
+        Timing::Constant(1), // 0xA1 : AND C
+        Timing::Constant(1), // 0xA2 : AND D
+        Timing::Constant(1), // 0xA3 : AND E
+        Timing::Constant(1), // 0xA4 : AND H
+        Timing::Constant(1), // 0xA5 : AND L
+        Timing::Constant(2), // 0xA6 : AND (HL)
+        Timing::Constant(1), // 0xA7 : AND A
+        Timing::Constant(1), // 0xA8 : XOR B
+        Timing::Constant(1), // 0xA9 : XOR C
+        Timing::Constant(1), // 0xAA : XOR D
+        Timing::Constant(1), // 0xAB : XOR E
+        Timing::Constant(1), // 0xAC : XOR H
+        Timing::Constant(1), // 0xAD : XOR L
+        Timing::Constant(2), // 0xAE : XOR (HL)
+        Timing::Constant(1), // 0xAF : XOR A
+        Timing::Constant(1), // 0xB0 : OR B
+        Timing::Constant(1), // 0xB1 : OR C
+        Timing::Constant(1), // 0xB2 : OR D
+        Timing::Constant(1), // 0xB3 : OR E
+        Timing::Constant(1), // 0xB4 : OR H
+        Timing::Constant(1), // 0xB5 : OR L
+        Timing::Constant(2), // 0xB6 : OR (HL)
+        Timing::Constant(1), // 0xB7 : OR A
+        Timing::Constant(1), // 0xB8 : CP B
+        Timing::Constant(1), // 0xB9 : CP C
+        Timing::Constant(1), // 0xBA : CP D
+        Timing::Constant(1), // 0xBB : CP E
+        Timing::Constant(1), // 0xBC : CP H
+        Timing::Constant(1), // 0xBD : CP L
+        Timing::Constant(2), // 0xBE : CP (HL)
+        Timing::Constant(1), // 0xBF : CP A
+        Timing::Branch(BranchTiming {
+            timing_skipped: 2,
+            timing_taken: 5,
+            condition: BranchCondition::NonZero,
+        }), // 0xC0 : RET NZ
+        Timing::Constant(3), // 0xC1 : POP BC
+        Timing::Branch(BranchTiming {
+            timing_skipped: 3,
+            timing_taken: 4,
+            condition: BranchCondition::NonZero,
+        }), // 0xC2 : JP NZ,a16
+        Timing::Constant(4), // 0xC3 : JP a16
+        Timing::Branch(BranchTiming {
+            timing_skipped: 3,
+            timing_taken: 6,
+            condition: BranchCondition::NonZero,
+        }), // 0xC4 : CALL NZ,a16
+        Timing::Constant(4), // 0xC5 : PUSH BC
+        Timing::Constant(2), // 0xC6 : ADD A,d8
+        Timing::Constant(4), // 0xC7 : RST 00H
+        Timing::Branch(BranchTiming {
+            timing_skipped: 2,
+            timing_taken: 5,
+            condition: BranchCondition::Zero,
+        }), // 0xC8 : RET Z
+        Timing::Constant(4), // 0xC9 : RET
+        Timing::Branch(BranchTiming {
+            timing_skipped: 3,
+            timing_taken: 4,
+            condition: BranchCondition::Zero,
+        }), // 0xCA : JP Z,a16
+        Timing::Ignored,     // 0xCB : PREFIX CB
+        Timing::Branch(BranchTiming {
+            timing_skipped: 3,
+            timing_taken: 6,
+            condition: BranchCondition::Zero,
+        }), // 0xCC : CALL Z,a16
+        Timing::Constant(6), // 0xCD : CALL a16
+        Timing::Constant(2), // 0xCE : ADC A,d8
+        Timing::Constant(4), // 0xCF : RST 08H
+        Timing::Branch(BranchTiming {
+            timing_skipped: 2,
+            timing_taken: 5,
+            condition: BranchCondition::NonCarry,
+        }), // 0xD0 : RET NC
+        Timing::Constant(3), // 0xD1 : POP DE
+        Timing::Branch(BranchTiming {
+            timing_skipped: 3,
+            timing_taken: 4,
+            condition: BranchCondition::NonCarry,
+        }), // 0xD2 : JP NC,a16
+        Timing::Ignored,     // 0xD3 : undefined
+        Timing::Branch(BranchTiming {
+            timing_skipped: 3,
+            timing_taken: 6,
+            condition: BranchCondition::NonCarry,
+        }), // 0xD4 : CALL NC,a16
+        Timing::Constant(4), // 0xD5 : PUSH DE
+        Timing::Constant(2), // 0xD6 : SUB d8
+        Timing::Constant(4), // 0xD7 : RST 10H
+        Timing::Branch(BranchTiming {
+            timing_skipped: 2,
+            timing_taken: 5,
+            condition: BranchCondition::Carry,
+        }), // 0xD8 : RET C
+        Timing::Constant(4), // 0xD9 : RETI
+        Timing::Branch(BranchTiming {
+            timing_skipped: 3,
+            timing_taken: 4,
+            condition: BranchCondition::Carry,
+        }), // 0xDA : JP C,a16
+        Timing::Ignored,     // 0xDB : undefined
+        Timing::Branch(BranchTiming {
+            timing_skipped: 3,
+            timing_taken: 6,
+            condition: BranchCondition::Carry,
+        }), // 0xDC : CALL C,a16
+        Timing::Ignored,     // 0xDD : undefined
+        Timing::Constant(2), // 0xDE : SBC A,d8
+        Timing::Constant(4), // 0xDF : RST 18H
+        Timing::Constant(3), // 0xE0 : LDH (a8),A
+        Timing::Constant(3), // 0xE1 : POP HL
+        Timing::Constant(2), // 0xE2 : LDH (C),A
+        Timing::Ignored,     // 0xE3 : undefined
+        Timing::Ignored,     // 0xE4 : undefined
+        Timing::Constant(4), // 0xE5 : PUSH HL
+        Timing::Constant(2), // 0xE6 : AND d8
+        Timing::Constant(4), // 0xE7 : RST 20H
+        Timing::Constant(4), // 0xE8 : ADD SP,r8
+        Timing::Constant(1), // 0xE9 : JP (HL)
+        Timing::Constant(4), // 0xEA : LD (a16),A
+        Timing::Ignored,     // 0xEB : undefined
+        Timing::Ignored,     // 0xEC : undefined
+        Timing::Ignored,     // 0xED : undefined
+        Timing::Constant(2), // 0xEE : XOR d8
+        Timing::Constant(4), // 0xEF : RST 28H
+        Timing::Constant(3), // 0xF0 : LDH A,(a8)
+        Timing::Constant(3), // 0xF1 : POP AF
+        Timing::Constant(2), // 0xF2 : LDH A,(C)
+        Timing::Constant(1), // 0xF3 : DI
+        Timing::Ignored,     // 0xF4 : undefined
+        Timing::Constant(4), // 0xF5 : PUSH AF
+        Timing::Constant(2), // 0xF6 : OR d8
+        Timing::Constant(4), // 0xF7 : RST 30H
+        Timing::Constant(3), // 0xF8 : LD HL,SP+r8
+        Timing::Constant(2), // 0xF9 : LD SP,HL
+        Timing::Constant(4), // 0xFA : LD A,(a16)
+        Timing::Constant(1), // 0xFB : EI
+        Timing::Ignored,     // 0xFC : undefined
+        Timing::Ignored,     // 0xFD : undefined
+        Timing::Constant(2), // 0xFE : CP d8
+        Timing::Constant(4), // 0xFF : RST 38H
     ];
 
     struct AbsoluteCycleCounter {
@@ -2507,33 +2854,74 @@ mod tests {
     }
 
     impl AbsoluteCycleCounter {
-        pub fn new() -> Self {
-            Self { cycle_counter: 0 }
+        pub fn new(offset: u8) -> Self {
+            Self {
+                cycle_counter: 0u8.wrapping_sub(offset),
+            }
         }
     }
 
+    fn new_cycle_counted_cpu(rom: &[u8], offset: u8) -> Cpu {
+        Cpu::new(ConsoleMemory::new(
+            rom,
+            Some(Box::new(AbsoluteCycleCounter::new(offset))),
+        ))
+    }
+
     #[test]
-    fn test_op_codes_length() {
-        OP_CODE_LENGTHS
+    fn test_deterministic_op_code_timings() {
+        OP_CODE_TIMINGS
             .into_iter()
             .enumerate()
-            .filter(|&(_, timing)| timing != 0) // TODO: remove
-            .for_each(|(op_code, timing)| {
-                let mut rom = vec![0; 0x1000];
-                rom[0x100] = op_code as u8;
+            .filter_map(|(op_code, timing)| match timing {
+                Timing::Constant(timing) => Some((op_code as u8, timing)),
+                _ => None,
+            })
+            .for_each(|(op_code, expected_timing)| {
+                let mut rom = vec![0; 0x0101];
+                rom[0x100] = op_code;
 
-                let mut cpu = Cpu::new(ConsoleMemory::new(
-                    rom.as_slice(),
-                    Some(Box::new(AbsoluteCycleCounter::new())),
-                ));
-
+                let mut cpu = new_cycle_counted_cpu(rom.as_slice(), 0);
                 cpu.tick();
 
+                let timing = cpu.memory.silent_read(timer::address::DIV);
                 assert_eq!(
-                    cpu.memory.silent_read(timer::address::DIV),
-                    timing,
-                    "opcode {:#04x}",
-                    op_code
+                    expected_timing, timing,
+                    "Expected a constant time of {} for op code {:#04x}, got {} instead",
+                    expected_timing, op_code, timing
+                );
+            });
+    }
+
+    #[test]
+    fn test_conditional_op_code_timings() {
+        OP_CODE_TIMINGS
+            .into_iter()
+            .enumerate()
+            .filter_map(|(op_code, timing)| match timing {
+                Timing::Branch(timings) => Some((op_code as u8, timings)),
+                _ => None,
+            })
+            .flat_map(|(op_code, timings)| {
+                timings
+                    .as_states_and_timings_iter()
+                    .map(move |(status_flag, timing)| (op_code, status_flag, timing))
+            })
+            .for_each(|(op_code, status_flag, expected_timing)| {
+                let mut rom = vec![0; 0x10000];
+                rom[0x0100] = 0xF1;
+                rom[0x0101] = op_code;
+                rom[0xFFF4] = status_flag;
+
+                let mut cpu = new_cycle_counted_cpu(rom.as_slice(), 3);
+                cpu.tick();
+                cpu.tick();
+
+                let timing = cpu.memory.silent_read(timer::address::DIV);
+                assert_eq!(
+                    expected_timing, timing,
+                    "Expected a time of {} for {:#04x} with flags {:#04x}, got {} instead",
+                    expected_timing, op_code, status_flag, timing
                 );
             });
     }
