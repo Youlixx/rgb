@@ -2239,6 +2239,7 @@ mod tests {
         Cpu::new(ConsoleMemory::new(
             rom,
             Some(Box::new(AbsoluteCycleCounter::new(offset))),
+            None,
         ))
     }
 

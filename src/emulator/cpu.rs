@@ -480,30 +480,57 @@ impl Cpu {
 
 #[cfg(test)]
 mod tests {
+    use std::{cell::RefCell, rc::Rc};
+
     use crate::emulator::memory::{ConsoleMemory, Memory};
 
     use super::Cpu;
 
-    fn run_test_rom(rom: &[u8]) {
-        let mut logs = String::new();
-        let mut cpu = Cpu::new(ConsoleMemory::new(rom, None));
+    struct TestSerialPort {
+        logs: String,
+        completed: bool,
+    }
 
-        // while !logs.ends_with("Passed") && !logs.ends_with("Failed") {
-        for _ in 0..10000000 {
-            cpu.tick();
+    impl Memory for Rc<RefCell<TestSerialPort>> {
+        fn silent_read(&self, _: usize) -> u8 {
+            0
+        }
 
-            if cpu.memory.last_address == 0xFF01 {
-                logs.push(cpu.memory.silent_read(cpu.memory.last_address) as char);
+        fn silent_write(&mut self, address: usize, value: u8) {
+            if address == 0xFF01 {
+                let mut logger = self.borrow_mut();
+                logger.logs.push(value as char);
+
+                if logger.logs.ends_with("Passed") || logger.logs.ends_with("Failed") {
+                    logger.completed = true;
+                }
             }
         }
+    }
 
-        println!("logs={}", logs);
-
-        assert!(logs.contains("Passed"));
-
-        if logs.contains("Failed") {
-            panic!("Test failed\n{}", logs);
+    impl TestSerialPort {
+        fn new() -> Rc<RefCell<Self>> {
+            Rc::new(RefCell::new(Self {
+                logs: String::new(),
+                completed: false,
+            }))
         }
+    }
+
+    fn run_test_rom(rom: &[u8]) {
+        let logger = TestSerialPort::new();
+        let mut cpu = Cpu::new(ConsoleMemory::new(
+            rom,
+            None,
+            Some(Box::new(logger.clone())),
+        ));
+
+        while !logger.borrow().completed {
+            cpu.tick();
+        }
+
+        let logs = logger.borrow().logs.clone();
+        assert!(logs.contains("Passed"), "Test rom failed\n{}", logs);
     }
 
     #[test]
@@ -581,14 +608,22 @@ mod tests {
     }
 
     #[test]
-    fn test_rom_interrupt_time() {
-        let rom = include_bytes!("../../roms/gb-test-roms/interrupt_time/interrupt_time.gb");
+    fn test_rom_mem_reads() {
+        let rom = include_bytes!("../../roms/gb-test-roms/mem_timing/individual/01-read_timing.gb");
         run_test_rom(rom);
     }
 
     #[test]
-    fn test_rom_mem_reads() {
-        let rom = include_bytes!("../../roms/gb-test-roms/mem_timing/individual/01-read_timing.gb");
+    fn test_rom_mem_writes() {
+        let rom =
+            include_bytes!("../../roms/gb-test-roms/mem_timing/individual/02-write_timing.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_mem_modify() {
+        let rom =
+            include_bytes!("../../roms/gb-test-roms/mem_timing/individual/03-modify_timing.gb");
         run_test_rom(rom);
     }
 }
