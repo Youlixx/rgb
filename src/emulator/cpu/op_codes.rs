@@ -2869,7 +2869,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deterministic_op_code_timings() {
+    fn test_op_code_constant_timings() {
         OP_CODE_TIMINGS
             .into_iter()
             .enumerate()
@@ -2894,7 +2894,7 @@ mod tests {
     }
 
     #[test]
-    fn test_conditional_op_code_timings() {
+    fn test_op_code_branch_timings() {
         OP_CODE_TIMINGS
             .into_iter()
             .enumerate()
@@ -2908,7 +2908,7 @@ mod tests {
                     .map(move |(status_flag, timing)| (op_code, status_flag, timing))
             })
             .for_each(|(op_code, status_flag, expected_timing)| {
-                let mut rom = vec![0; 0x10000];
+                let mut rom = vec![0; 0xFFF5];
                 rom[0x0100] = 0xF1;
                 rom[0x0101] = op_code;
                 rom[0xFFF4] = status_flag;
