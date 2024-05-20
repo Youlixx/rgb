@@ -573,8 +573,14 @@ mod tests {
     }
 
     #[test]
-    fn test_rom_interrupt_time() {
+    fn test_rom_instruction_timing() {
         let rom = include_bytes!("../../roms/gb-test-roms/instr_timing/instr_timing.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_interrupt_time() {
+        let rom = include_bytes!("../../roms/gb-test-roms/interrupt_time/interrupt_time.gb");
         run_test_rom(rom);
     }
 }
