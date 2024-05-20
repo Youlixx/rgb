@@ -2,9 +2,9 @@ mod cb_codes;
 mod op_codes;
 mod register;
 
-use self::{op_codes::OP_CODE_FUNCTION_TABLE, register::{CpuRegisters, Register}};
+use self::{op_codes::OP_CODE_FUNCTION_TABLE, register::CpuRegisters};
 
-use super::{memory::ConsoleMemory, timer::Timer};
+use super::memory::ConsoleMemory;
 
 mod status_flag {
     pub const ZERO: u8 = 0x80;
@@ -12,57 +12,6 @@ mod status_flag {
     pub const HALF_CARRY: u8 = 0x20;
     pub const CARRY: u8 = 0x10;
 }
-
-// struct CpuRegisters {
-//     register_a: u8,
-//     register_b: u8,
-//     register_c: u8,
-//     register_d: u8,
-//     register_e: u8,
-//     register_h: u8,
-//     register_l: u8,
-// }
-
-// impl CpuRegisters {
-//     fn new() -> Self {
-//         Self {
-//             register_a: 0,
-//             register_b: 0,
-//             register_c: 0,
-//             register_d: 0,
-//             register_e: 0,
-//             register_h: 0,
-//             register_l: 0,
-//         }
-//     }
-
-//     fn bc(&self) -> u16 {
-//         ((self.register_b as u16) << 8) | self.register_c as u16
-//     }
-
-//     fn set_bc(&mut self, value: u16) {
-//         self.register_b = (value >> 8) as u8;
-//         self.register_c = (value & 0xFF) as u8;
-//     }
-
-//     fn de(&self) -> u16 {
-//         ((self.register_d as u16) << 8) | self.register_e as u16
-//     }
-
-//     fn set_de(&mut self, value: u16) {
-//         self.register_d = (value >> 8) as u8;
-//         self.register_e = (value & 0xFF) as u8;
-//     }
-
-//     fn hl(&self) -> u16 {
-//         ((self.register_h as u16) << 8) | self.register_l as u16
-//     }
-
-//     fn set_hl(&mut self, value: u16) {
-//         self.register_h = (value >> 8) as u8;
-//         self.register_l = (value & 0xFF) as u8;
-//     }
-// }
 
 pub struct Cpu {
     memory: ConsoleMemory,
@@ -79,10 +28,10 @@ pub struct Cpu {
 impl Cpu {
     pub fn new(memory: ConsoleMemory) -> Self {
         Self {
-            memory: memory,
+            memory,
             program_counter: 0x0100,
             registers: CpuRegisters::new(),
-            stack_pointer: 0,
+            stack_pointer: 0xFFF4,
             interrupt_master_toggle: false,
             interrupt_master_enabled: false,
             halted: false,
@@ -98,7 +47,7 @@ impl Cpu {
         }
 
         if self.halted {
-            self.memory.cycle_read(0x0000); // TODO proper dummy read???
+            self.dummy_cycle();
             return;
         }
 
@@ -145,6 +94,7 @@ impl Cpu {
         self.write(self.registers.hl(), value);
     }
 
+    // TODO move elsewhere
     fn op_placeholder(&mut self) {
         panic!("Opcode not implemented!")
     }
@@ -181,6 +131,7 @@ impl Cpu {
     }
 }
 
+// TODO move elsewhere
 impl Cpu {
     fn run_add_u8_and_update_flags(&mut self, operand: u8) {
         let result: u16 = (self.registers.a() as u16) + (operand as u16);
@@ -228,8 +179,9 @@ impl Cpu {
             0
         };
 
-        // TODO wrapping add....
-        let result: u16 = (self.registers.a() as u16) + (operand as u16) + carry;
+        let result: u16 = (self.registers.a() as u16)
+            .wrapping_add(operand as u16)
+            .wrapping_add(carry);
 
         self.registers.reset_status_flags();
 
@@ -528,10 +480,7 @@ impl Cpu {
 
 #[cfg(test)]
 mod tests {
-    use crate::emulator::{
-        memory::{ConsoleMemory, Memory},
-        timer::ConsoleTimer,
-    };
+    use crate::emulator::memory::{ConsoleMemory, Memory};
 
     use super::Cpu;
 
@@ -622,12 +571,6 @@ mod tests {
         let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/individual/11-op a,(hl).gb");
         run_test_rom(rom);
     }
-
-    // #[test]
-    // fn test_rom_interrupt_time() {
-    //     let rom = include_bytes!("../../roms/gb-test-roms/interrupt_time/interrupt_time.gb");
-    //     run_test_rom(rom);
-    // }
 
     #[test]
     fn test_rom_interrupt_time() {
