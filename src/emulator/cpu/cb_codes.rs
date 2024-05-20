@@ -2181,3 +2181,86 @@ pub const CB_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
     Cpu::cb_set_7_hl, // 0xFE : SET 7,(HL)
     Cpu::cb_set_7_a,  // 0xFF : SET 7,A
 ];
+
+#[cfg(test)]
+mod tests {
+    use crate::emulator::cpu::{status_flag, Cpu};
+    use crate::emulator::interrupts::InterruptEmitter;
+    use crate::emulator::memory::{ConsoleMemory, Memory};
+    use crate::emulator::timer;
+
+    const CB_CODE_TIMINGS: [u8; 256] = [
+        2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x0
+        2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x1
+        2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x2
+        2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x3
+        2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, // 0x4
+        2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, // 0x5
+        2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, // 0x6
+        2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, // 0x7
+        2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x8
+        2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x9
+        2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0xA
+        2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0xB
+        2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0xC
+        2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0xD
+        2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0xE
+        2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0xF
+    ];
+
+    struct AbsoluteCycleCounter {
+        cycle_counter: u8,
+    }
+
+    impl Memory for AbsoluteCycleCounter {
+        fn silent_read(&self, _: usize) -> u8 {
+            self.cycle_counter
+        }
+
+        fn silent_write(&mut self, _: usize, _: u8) {}
+    }
+
+    impl InterruptEmitter for AbsoluteCycleCounter {
+        fn tick(&mut self) -> Option<crate::emulator::interrupts::InterruptSource> {
+            self.cycle_counter = self.cycle_counter.wrapping_add(1);
+            None
+        }
+    }
+
+    impl AbsoluteCycleCounter {
+        pub fn new(offset: u8) -> Self {
+            Self {
+                cycle_counter: 0u8.wrapping_sub(offset),
+            }
+        }
+    }
+
+    fn new_cycle_counted_cpu(rom: &[u8], offset: u8) -> Cpu {
+        Cpu::new(ConsoleMemory::new(
+            rom,
+            Some(Box::new(AbsoluteCycleCounter::new(offset))),
+        ))
+    }
+
+    #[test]
+    fn test_cb_code_timings() {
+        CB_CODE_TIMINGS
+            .into_iter()
+            .enumerate()
+            .for_each(|(cb_code, expected_timing)| {
+                let mut rom = vec![0; 0x0102];
+                rom[0x100] = 0xCB;
+                rom[0x101] = cb_code as u8;
+
+                let mut cpu = new_cycle_counted_cpu(rom.as_slice(), 0);
+                cpu.tick();
+
+                let timing = cpu.memory.silent_read(timer::address::DIV);
+                assert_eq!(
+                    expected_timing, timing,
+                    "Expected a constant time of {} for CB code {:#04x}, got {} instead",
+                    expected_timing, cb_code, timing
+                );
+            });
+    }
+}
