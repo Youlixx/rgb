@@ -17,6 +17,11 @@ impl InterruptSource {
     ];
 }
 
+pub mod address {
+    pub const INTERRUPTS_FLAGS: usize = 0xFF0F;
+    pub const INTERRUPTS_ENABLE: usize = 0xFFFF;
+}
+
 #[derive(Debug)]
 pub struct Interrupts {
     enable: u8,
@@ -78,4 +83,8 @@ impl Interrupts {
                 }
             })
     }
+}
+
+pub trait InterruptEmitter {
+    fn tick(&mut self) -> Option<InterruptSource>;
 }
