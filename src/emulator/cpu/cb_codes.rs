@@ -2184,7 +2184,7 @@ pub const CB_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
 
 #[cfg(test)]
 mod tests {
-    use crate::emulator::cpu::{status_flag, Cpu};
+    use crate::emulator::cpu::Cpu;
     use crate::emulator::interrupts::InterruptEmitter;
     use crate::emulator::memory::{ConsoleMemory, Memory};
     use crate::emulator::timer;
