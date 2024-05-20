@@ -134,7 +134,7 @@ impl Cpu {
 // TODO move elsewhere
 impl Cpu {
     fn run_add_u8_and_update_flags(&mut self, operand: u8) {
-        let result: u16 = (self.registers.a() as u16) + (operand as u16);
+        let result: u16 = (self.registers.a() as u16).wrapping_add(operand as u16);
         self.registers.reset_status_flags();
 
         if (result & 0xFF) == 0 {
@@ -146,7 +146,7 @@ impl Cpu {
         }
 
         if result > 0xFF {
-            self.registers.update_status_flags(status_flag::HALF_CARRY);
+            self.registers.update_status_flags(status_flag::CARRY);
         }
 
         self.registers.set_a((result & 0xFF) as u8);
@@ -201,7 +201,7 @@ impl Cpu {
     }
 
     fn run_sub_and_update_flags(&mut self, operand: u8) {
-        self.registers.set_status_flags(status_flag::HALF_CARRY);
+        self.registers.set_status_flags(status_flag::NEGATIVE);
 
         if self.registers.a() == operand {
             self.registers.update_status_flags(status_flag::ZERO);
@@ -489,7 +489,7 @@ mod tests {
         let mut cpu = Cpu::new(ConsoleMemory::new(rom, None));
 
         // while !logs.ends_with("Passed") && !logs.ends_with("Failed") {
-        for _ in 0..1000000 {
+        for _ in 0..10000000 {
             cpu.tick();
 
             if cpu.memory.last_address == 0xFF01 {
@@ -498,6 +498,8 @@ mod tests {
         }
 
         println!("logs={}", logs);
+
+        assert!(logs.contains("Passed"));
 
         if logs.contains("Failed") {
             panic!("Test failed\n{}", logs);
@@ -581,6 +583,12 @@ mod tests {
     #[test]
     fn test_rom_interrupt_time() {
         let rom = include_bytes!("../../roms/gb-test-roms/interrupt_time/interrupt_time.gb");
+        run_test_rom(rom);
+    }
+
+    #[test]
+    fn test_rom_mem_reads() {
+        let rom = include_bytes!("../../roms/gb-test-roms/mem_timing/individual/01-read_timing.gb");
         run_test_rom(rom);
     }
 }
