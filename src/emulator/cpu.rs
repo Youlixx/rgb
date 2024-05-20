@@ -2,7 +2,7 @@ mod cb_codes;
 mod op_codes;
 mod register;
 
-use self::{op_codes::OP_CODE_FUNCTION_TABLE, register::CpuRegisters};
+use self::{op_codes::OP_CODE_FUNCTION_TABLE, register::{CpuRegisters, Register}};
 
 use super::{memory::ConsoleMemory, timer::Timer};
 
@@ -118,7 +118,7 @@ impl Cpu {
         }
 
         if let Some(program_counter) = self.memory.interrupts.get_program_counter_address() {
-            self.stack_push_u16(self.program_counter);
+            self.stack_push(self.program_counter);
             self.interrupt_master_enabled = false;
             self.halted = false;
             self.program_counter = program_counter as u16;
@@ -163,55 +163,22 @@ impl Cpu {
         (lsb as u16) | ((msb as u16) << 8)
     }
 
-    fn stack_pop_u8(&mut self) -> u8 {
-        let value = self.read(self.stack_pointer);
+    fn stack_push(&mut self, value: u16) {
+        self.dummy_cycle();
+        self.stack_pointer = self.stack_pointer.wrapping_sub(1);
+        self.write(self.stack_pointer, (value >> 8) as u8);
+        self.stack_pointer = self.stack_pointer.wrapping_sub(1);
+        self.write(self.stack_pointer, (value & 0xFF) as u8);
+    }
+
+    fn stack_pop(&mut self) -> u16 {
+        let lsb = self.read(self.stack_pointer);
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
+        let msb = self.read(self.stack_pointer);
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
 
-        value
+        (lsb as u16) | ((msb as u16) << 8)
     }
-
-    fn stack_push_u8(&mut self, value: u8) {
-        self.stack_pointer = self.stack_pointer.wrapping_sub(1);
-        self.write(self.stack_pointer, value);
-    }
-
-    fn stack_pop_u16(&mut self) -> u16 {
-        // TODO check LSB/MSB order
-        (self.stack_pop_u8() as u16) | ((self.stack_pop_u8() as u16) << 8)
-    }
-
-    fn stack_push_u16(&mut self, value: u16) {
-        self.stack_push_u8((value >> 8) as u8);
-        self.stack_push_u8((value & 0xFF) as u8);
-    }
-
-    // // TODO: as stack_pointer cannot be accessed, sync not needed
-    // fn stack_push_u8(&mut self, msb: u8, lsb: u8) {
-    //     self.stack_pointer = self.stack_pointer.wrapping_sub(1);
-    //     self.dummy_cycle();
-    //     self.stack_pointer = self.stack_pointer.wrapping_sub(1);
-    //     self.write(self.stack_pointer.wrapping_add(1), msb);
-    //     self.write(self.stack_pointer, lsb);
-    // }
-
-    // // TODO: as stack_pointer cannot be accessed, sync not needed
-    // fn stack_pop_u8(&mut self) -> (u8, u8) {
-    //     self.stack_pointer = self.stack_pointer.wrapping_add(1);
-    //     let lsb = self.read(self.stack_pointer.wrapping_sub(1));
-    //     self.stack_pointer = self.stack_pointer.wrapping_add(1);
-    //     let msb = self.read(self.stack_pointer.wrapping_sub(1));
-
-    //     return (msb, lsb);
-    // }
-
-    // fn stack_pop_u16(&mut self) -> u16 {
-    //     let (msb, lsb) = self.stack_pop_u8();
-    //     (lsb as u16) | ((msb as u16) << 8)
-    // }
-
-    // fn stack_push_u16(&mut self, value: u16) {
-    //     self.stack_push_u8((value >> 8) as u8, (value & 0xFF) as u8);
-    // }
 }
 
 impl Cpu {
