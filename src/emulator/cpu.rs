@@ -56,7 +56,7 @@ impl Cpu {
     }
 
     fn handle_interrupts(&mut self) {
-        if !self.memory.interrupts.should_interrupt() {
+        if !self.memory.should_interrupt() {
             return;
         } else {
             self.halted = false;
@@ -66,7 +66,7 @@ impl Cpu {
             return;
         }
 
-        if let Some(program_counter) = self.memory.interrupts.get_program_counter_address() {
+        if let Some(program_counter) = self.memory.get_interrupt_address() {
             self.stack_push(self.program_counter);
             self.interrupt_master_enabled = false;
             self.halted = false;

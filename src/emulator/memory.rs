@@ -15,19 +15,18 @@ pub trait Tickable<T> {
 struct DefaultSerialPort {}
 
 impl Memory for DefaultSerialPort {
-    fn silent_read(&self, address: usize) -> u8 {
+    fn silent_read(&self, _: usize) -> u8 {
         0
     }
 
-    fn silent_write(&mut self, address: usize, value: u8) {}
+    fn silent_write(&mut self, _: usize, _: u8) {}
 }
 
 pub struct ConsoleMemory {
-    pub interrupts: Interrupts,
-    pub last_address: usize, // TODO: temporary, for testing purposes, should be adapted using GB link dyn
+    interrupts: Interrupts,
 
     memory: Vec<u8>, // TODO: temporary, not everything needs to be mapped... + mirroring
-    pub timer: Box<dyn Timer>,
+    timer: Box<dyn Timer>,
     serial_port: Box<dyn Memory>,
 }
 
@@ -42,7 +41,6 @@ impl ConsoleMemory {
 
         Self {
             memory,
-            last_address: 0x0000,
             interrupts: Interrupts::new(),
             timer: timer.unwrap_or(Box::new(ConsoleTimer::new())),
             serial_port: serial_port.unwrap_or(Box::new(DefaultSerialPort {})),
@@ -54,15 +52,21 @@ impl ConsoleMemory {
     }
 
     pub fn cycle_read(&mut self, address: usize) -> u8 {
-        self.last_address = address;
         self.tick();
         self.silent_read(address)
     }
 
     pub fn cycle_write(&mut self, address: usize, value: u8) {
-        self.last_address = address;
         self.tick();
         self.silent_write(address, value);
+    }
+
+    pub fn should_interrupt(&self) -> bool {
+        self.interrupts.should_interrupt()
+    }
+
+    pub fn get_interrupt_address(&mut self) -> Option<usize> {
+        self.interrupts.get_interrupt_address()
     }
 }
 

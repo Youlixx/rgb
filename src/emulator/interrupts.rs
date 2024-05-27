@@ -62,7 +62,7 @@ impl Interrupts {
         (self.enable & self.flags) != 0
     }
 
-    pub fn get_program_counter_address(&mut self) -> Option<usize> {
+    pub fn get_interrupt_address(&mut self) -> Option<usize> {
         let interrupts = self.enable & self.flags;
 
         if interrupts & 0x1F == 0 {
