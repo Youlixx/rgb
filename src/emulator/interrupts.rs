@@ -1,5 +1,8 @@
+use super::memory::Memory;
+
+/// Interrupt source enumeration.
 #[repr(u8)]
-pub enum InterruptSource {
+pub enum Interrupt {
     VBlank = 0x01,
     Lcd = 0x02,
     Timer = 0x04,
@@ -7,28 +10,28 @@ pub enum InterruptSource {
     Joypad = 0x10,
 }
 
-impl InterruptSource {
-    const INTERRUPT_ADDRESSES: [(InterruptSource, usize); 5] = [
-        (InterruptSource::VBlank, 0x40),
-        (InterruptSource::Lcd, 0x48),
-        (InterruptSource::Timer, 0x50),
-        (InterruptSource::Serial, 0x58),
-        (InterruptSource::Joypad, 0x60),
-    ];
-}
+/// Program counter address after the interrupt is acknowledged.
+const INTERRUPT_ADDRESSES: [(Interrupt, usize); 5] = [
+    (Interrupt::VBlank, 0x40),
+    (Interrupt::Lcd, 0x48),
+    (Interrupt::Timer, 0x50),
+    (Interrupt::Serial, 0x58),
+    (Interrupt::Joypad, 0x60),
+];
 
-pub mod address {
+mod address {
     pub const INTERRUPTS_FLAGS: usize = 0xFF0F;
     pub const INTERRUPTS_ENABLE: usize = 0xFFFF;
 }
 
-#[derive(Debug)]
-pub struct Interrupts {
+/// Interrupt registers, located at $FF0F and $FFFF.
+pub struct InterruptRegisters {
     enable: u8,
     flags: u8,
 }
 
-impl Interrupts {
+impl InterruptRegisters {
+    /// Initialize the interrupt registers in their power-up state.
     pub fn new() -> Self {
         Self {
             enable: 0xFF,
@@ -36,32 +39,20 @@ impl Interrupts {
         }
     }
 
-    pub fn update_flags(&mut self, flag: Option<InterruptSource>) {
-        if let Some(flag) = flag {
-            self.flags |= flag as u8;
-        }
+    /// Set the interrupt bit in at $FFFF. If the given interrupt is enabled,
+    /// it should be issued by calling `get_interrupt_address`, assuming it is
+    /// the highest priority interrupt.
+    pub fn update_flags(&mut self, flag: Interrupt) {
+        self.flags |= flag as u8;
     }
 
-    pub fn read_flags(&self) -> u8 {
-        self.flags
-    }
-
-    pub fn read_enable(&self) -> u8 {
-        self.enable
-    }
-
-    pub fn write_flags(&mut self, flags: u8) {
-        self.flags = flags;
-    }
-
-    pub fn write_enable(&mut self, enable: u8) {
-        self.enable = enable;
-    }
-
+    /// Check whether or not an enabled interrupt signal is pending.
     pub fn should_interrupt(&self) -> bool {
+        // TODO not sure if it should be check against the 0x1F bitmask.
         (self.enable & self.flags) != 0
     }
 
+    /// Get the interrupt jump address.
     pub fn get_interrupt_address(&mut self) -> Option<usize> {
         let interrupts = self.enable & self.flags;
 
@@ -69,7 +60,7 @@ impl Interrupts {
             return None;
         }
 
-        InterruptSource::INTERRUPT_ADDRESSES
+        INTERRUPT_ADDRESSES
             .into_iter()
             .find_map(|(source, program_counter)| {
                 let flag = source as u8;
@@ -85,6 +76,32 @@ impl Interrupts {
     }
 }
 
-pub trait InterruptEmitter {
-    fn tick(&mut self) -> Option<InterruptSource>;
+impl Memory for InterruptRegisters {
+    /// Read a value from the component memory. The address is always given in
+    /// the absolute address space of the emulator. If the address is out of
+    /// bound of the component memory, the function should return None.
+    fn read(&self, address: usize) -> Option<u8> {
+        match address {
+            address::INTERRUPTS_ENABLE => Some(self.enable),
+            address::INTERRUPTS_FLAGS => Some(self.flags),
+            _ => None,
+        }
+    }
+
+    /// Write a value to the component memory. The address is always given in
+    /// the absolute address space of the emulator. If the address is out of
+    /// bound of the component memory, the function should return None.
+    fn write(&mut self, address: usize, value: u8) -> bool {
+        match address {
+            address::INTERRUPTS_ENABLE => {
+                self.enable = value;
+                true
+            }
+            address::INTERRUPTS_FLAGS => {
+                self.flags = value;
+                true
+            }
+            _ => false,
+        }
+    }
 }
