@@ -1,53 +1,75 @@
 use super::interrupts::Interrupt;
 
-// TODO: rewrite docstrings...
 /// Memory trait.
 pub trait Memory {
-    /// Read a value from the component memory. The address is always given in
-    /// the absolute address space of the emulator. If the address is out of
-    /// bound of the component memory, the function should return None.
+    /// Read a value from the memory.
+    ///
+    /// The address is always given within the RELATIVE address space (starting at
+    /// address 0x0), and the [`MemoryMap`] is responsible for ensuring the address
+    /// validity, therefore it should never be out of bound.
     fn read(&self, address: usize) -> u8;
 
-    /// Write a value to the component memory. The address is always given in
-    /// the absolute address space of the emulator. If the address is out of
-    /// bound of the component memory, the function should return None.
+    /// Write a value to the memory.
+    ///
+    /// The address is always given within the RELATIVE address space (starting at
+    /// address 0x0), and the [`MemoryMap`] is responsible for ensuring the address
+    /// validity, therefore it should never be out of bound.
     fn write(&mut self, address: usize, value: u8);
 }
 
 /// Component trait.
 pub trait Component: Memory {
-    /// Tick the component. May return an interrupt to communicate to the CPU.
+    /// Tick the component.
+    ///return
+    /// Components may issue an interrupt to communicate to the CPU by returning the
+    /// corresponding interrupt.
     fn tick(&mut self) -> Option<Interrupt> {
         None
     }
 }
 
+/// MemoryMap trait.
 pub trait MemoryMap {
+    /// Read a value from the memory.
+    ///
+    /// The address is always given within the console address space (16-bit address).
+    /// This function should panic if the address is not mapped to any sub-memory.
     fn read(&self, address: usize) -> u8;
 
+    /// Write a value to the memory.
+    ///
+    /// The address is always given within the console address space (16-bit address).
+    /// This function should panic if the address is not mapped to any sub-memory.
     fn write(&mut self, address: usize, value: u8);
 
+    /// Tick all the internal components.
     fn tick(&mut self);
-
-    /// Perform a read operation and tick the internals. If the address is not
-    /// mapped by any component, this function will panic.
-    fn cycle_read(&mut self, address: usize) -> u8 {
-        self.tick();
-        self.read(address)
-    }
-
-    /// Perform a write operation and tick the internals. If the address is not
-    /// mapped by any component, this function will panic.
-    fn cycle_write(&mut self, address: usize, value: u8) {
-        self.tick();
-        self.write(address, value);
-    }
 
     /// Check whether or not an enabled interrupt signal is pending.
     fn should_interrupt(&self) -> bool;
 
     /// Get the interrupt jump address.
     fn get_interrupt_address(&mut self) -> Option<usize>;
+
+    /// Perform a read operation and tick the internal components.
+    ///
+    /// The components are always ticked first, the the read is performed. The address
+    /// is always given within the console address space (16-bit address). This function
+    /// should panic if the address is not mapped to any sub-memory.
+    fn cycle_read(&mut self, address: usize) -> u8 {
+        self.tick();
+        self.read(address)
+    }
+
+    /// Perform a write operation and tick the internal components.
+    ///
+    /// The components are always ticked first, the the write is performed. The address
+    /// is always given within the console address space (16-bit address). This function
+    /// should panic if the address is not mapped to any sub-memory.
+    fn cycle_write(&mut self, address: usize, value: u8) {
+        self.tick();
+        self.write(address, value);
+    }
 }
 
 #[macro_export]
