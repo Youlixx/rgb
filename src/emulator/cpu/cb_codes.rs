@@ -2218,7 +2218,7 @@ mod tests {
                 let mut cpu = new_cycle_counted_cpu(rom.as_slice(), 0);
                 cpu.tick();
 
-                let timing = cpu.memory.read(0xF000);
+                let timing = cpu.memory.read(0x00FF);
                 assert_eq!(
                     expected_timing, timing,
                     "Expected a constant time of {} for CB code {:#04x}, got {} instead",

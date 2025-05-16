@@ -512,13 +512,13 @@ mod tests {
 
     define_memory_map!(
         CycleCounterMemoryMap,
-        counter: CycleCounter => 0xF000,
+        counter: CycleCounter => 0x00FF,
         memory: RawMemoryChunk => [0x0000; 0x10000]
     );
 
     pub fn new_cycle_counted_cpu(rom: &[u8], offset: u8) -> Cpu {
         Cpu::new(Box::new(CycleCounterMemoryMap::new(
-            CycleCounter(offset),
+            CycleCounter(0u8.wrapping_sub(offset)),
             RawMemoryChunk::new(rom),
         )))
     }
@@ -533,9 +533,7 @@ mod tests {
             0
         }
 
-        fn write(&mut self, address: usize, value: u8) {
-            if address == 0xFF01 {}
-
+        fn write(&mut self, _: usize, value: u8) {
             let mut logger = self.borrow_mut();
             logger.logs.push(value as char);
 
@@ -558,7 +556,7 @@ mod tests {
 
     define_memory_map!(
         TestMemoryMap,
-        logger: Rc<RefCell<TestSerialPort>> => [0xFF01; 0xFF02],
+        logger: Rc<RefCell<TestSerialPort>> => 0xFF01,
         timer: ConsoleTimer => [0xFF04; 0xFF08],
         memory: RawMemoryChunk => [0x0000; 0x10000]
     );
