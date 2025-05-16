@@ -7,14 +7,14 @@ pub trait Memory {
     /// The address is always given within the RELATIVE address space (starting at
     /// address 0x0), and the [`MemoryMap`] is responsible for ensuring the address
     /// validity, therefore it should never be out of bound.
-    fn read(&self, address: usize) -> u8;
+    fn read(&self, address: u16) -> u8;
 
     /// Write a value to the memory.
     ///
     /// The address is always given within the RELATIVE address space (starting at
     /// address 0x0), and the [`MemoryMap`] is responsible for ensuring the address
     /// validity, therefore it should never be out of bound.
-    fn write(&mut self, address: usize, value: u8);
+    fn write(&mut self, address: u16, value: u8);
 }
 
 /// Component trait.
@@ -34,13 +34,13 @@ pub trait MemoryMap {
     ///
     /// The address is always given within the console address space (16-bit address).
     /// This function should panic if the address is not mapped to any sub-memory.
-    fn read(&self, address: usize) -> u8;
+    fn read(&self, address: u16) -> u8;
 
     /// Write a value to the memory.
     ///
     /// The address is always given within the console address space (16-bit address).
     /// This function should panic if the address is not mapped to any sub-memory.
-    fn write(&mut self, address: usize, value: u8);
+    fn write(&mut self, address: u16, value: u8);
 
     /// Tick all the internal components.
     fn tick(&mut self);
@@ -49,14 +49,14 @@ pub trait MemoryMap {
     fn should_interrupt(&self) -> bool;
 
     /// Get the interrupt jump address.
-    fn get_interrupt_address(&mut self) -> Option<usize>;
+    fn get_interrupt_address(&mut self) -> Option<u16>;
 
     /// Perform a read operation and tick the internal components.
     ///
     /// The components are always ticked first, the the read is performed. The address
     /// is always given within the console address space (16-bit address). This function
     /// should panic if the address is not mapped to any sub-memory.
-    fn cycle_read(&mut self, address: usize) -> u8 {
+    fn cycle_read(&mut self, address: u16) -> u8 {
         self.tick();
         self.read(address)
     }
@@ -66,7 +66,7 @@ pub trait MemoryMap {
     /// The components are always ticked first, the the write is performed. The address
     /// is always given within the console address space (16-bit address). This function
     /// should panic if the address is not mapped to any sub-memory.
-    fn cycle_write(&mut self, address: usize, value: u8) {
+    fn cycle_write(&mut self, address: u16, value: u8) {
         self.tick();
         self.write(address, value);
     }
@@ -93,18 +93,20 @@ macro_rules! define_memory_map {
         }
 
         impl MemoryMap for $MapName {
-            fn read(&self, address: usize) -> u8 {
+            fn read(&self, address: u16) -> u8 {
                 match address {
                     0xFF0F | 0xFFFF => self.interrupt_registers.read(address),
                     $(define_memory_map!(@make_pattern $range) => self.$name.read(address - define_memory_map!(@make_offset $range)),)*
+                    #[allow(unreachable_patterns)]
                     _ => panic!("Tried to read from an unmapped address.")
                 }
             }
 
-            fn write(&mut self, address: usize, value: u8) {
+            fn write(&mut self, address: u16, value: u8) {
                 match address {
                     0xFF0F | 0xFFFF => self.interrupt_registers.write(address, value),
                     $(define_memory_map!(@make_pattern $range) => self.$name.write(address - define_memory_map!(@make_offset $range), value),)*
+                    #[allow(unreachable_patterns)]
                     _ => panic!("Tried to write to an unmapped address.")
                 }
             }
@@ -121,13 +123,13 @@ macro_rules! define_memory_map {
                 self.interrupt_registers.should_interrupt()
             }
 
-            fn get_interrupt_address(&mut self) -> Option<usize> {
+            fn get_interrupt_address(&mut self) -> Option<u16> {
                 self.interrupt_registers.get_interrupt_address()
             }
         }
     };
 
-    (@make_pattern [ $start:expr ; $end:expr ]) => { $start..$end };
+    (@make_pattern [ $start:expr ; $end:expr ]) => { $start..=$end };
     (@make_pattern $start:expr) => { $start };
 
     (@make_offset [ $start:expr ; $end:expr ]) => { $start };
@@ -148,12 +150,12 @@ impl<const SIZE: usize> RawMemoryChunk<SIZE> {
 }
 
 impl<const SIZE: usize> Memory for RawMemoryChunk<SIZE> {
-    fn read(&self, address: usize) -> u8 {
-        self.memory[address]
+    fn read(&self, address: u16) -> u8 {
+        self.memory[address as usize]
     }
 
-    fn write(&mut self, address: usize, value: u8) {
-        self.memory[address] = value;
+    fn write(&mut self, address: u16, value: u8) {
+        self.memory[address as usize] = value;
     }
 }
 

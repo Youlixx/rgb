@@ -70,16 +70,16 @@ impl Cpu {
             self.stack_push(self.program_counter);
             self.interrupt_master_enabled = false;
             self.halted = false;
-            self.program_counter = program_counter as u16;
+            self.program_counter = program_counter;
         }
     }
 
     fn read(&mut self, address: u16) -> u8 {
-        self.memory.cycle_read(address as usize)
+        self.memory.cycle_read(address)
     }
 
     fn write(&mut self, address: u16, value: u8) {
-        self.memory.cycle_write(address as usize, value);
+        self.memory.cycle_write(address, value);
     }
 
     fn dummy_cycle(&mut self) {
@@ -496,11 +496,11 @@ mod tests {
     pub struct CycleCounter(u8);
 
     impl Memory for CycleCounter {
-        fn read(&self, _: usize) -> u8 {
+        fn read(&self, _: u16) -> u8 {
             self.0
         }
 
-        fn write(&mut self, _: usize, _: u8) {}
+        fn write(&mut self, _: u16, _: u8) {}
     }
 
     impl Component for CycleCounter {
@@ -513,7 +513,7 @@ mod tests {
     define_memory_map!(
         CycleCounterMemoryMap,
         counter: CycleCounter => 0x00FF,
-        memory: RawMemoryChunk => [0x0000; 0x10000]
+        memory: RawMemoryChunk => [0x0000; 0xFFFF]
     );
 
     pub fn new_cycle_counted_cpu(rom: &[u8], offset: u8) -> Cpu {
@@ -529,11 +529,11 @@ mod tests {
     }
 
     impl Memory for Rc<RefCell<TestSerialPort>> {
-        fn read(&self, _: usize) -> u8 {
+        fn read(&self, _: u16) -> u8 {
             0
         }
 
-        fn write(&mut self, _: usize, value: u8) {
+        fn write(&mut self, _: u16, value: u8) {
             let mut logger = self.borrow_mut();
             logger.logs.push(value as char);
 
@@ -558,7 +558,7 @@ mod tests {
         TestMemoryMap,
         logger: Rc<RefCell<TestSerialPort>> => 0xFF01,
         timer: ConsoleTimer => [0xFF04; 0xFF08],
-        memory: RawMemoryChunk => [0x0000; 0x10000]
+        memory: RawMemoryChunk => [0x0000; 0xFFFF]
     );
 
     fn run_test_rom(rom: &[u8]) {

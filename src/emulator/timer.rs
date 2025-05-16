@@ -32,7 +32,7 @@ impl ConsoleTimer {
 
 // TODO: use const register names!
 impl Memory for ConsoleTimer {
-    fn read(&self, address: usize) -> u8 {
+    fn read(&self, address: u16) -> u8 {
         match address {
             0 => (self.divider >> 8) as u8,
             1 => self.counter,
@@ -42,7 +42,7 @@ impl Memory for ConsoleTimer {
         }
     }
 
-    fn write(&mut self, address: usize, value: u8) {
+    fn write(&mut self, address: u16, value: u8) {
         match address {
             0 => self.divider = 0,
             1 => self.counter = value,

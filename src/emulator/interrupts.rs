@@ -12,7 +12,7 @@ pub enum Interrupt {
 }
 
 /// Program counter address after the interrupt is acknowledged.
-const INTERRUPT_ADDRESSES: [(Interrupt, usize); 5] = [
+const INTERRUPT_ADDRESSES: [(Interrupt, u16); 5] = [
     (Interrupt::VBlank, 0x40),
     (Interrupt::Lcd, 0x48),
     (Interrupt::Timer, 0x50),
@@ -21,8 +21,8 @@ const INTERRUPT_ADDRESSES: [(Interrupt, usize); 5] = [
 ];
 
 mod address {
-    pub const INTERRUPTS_FLAGS: usize = 0xFF0F;
-    pub const INTERRUPTS_ENABLE: usize = 0xFFFF;
+    pub const INTERRUPTS_FLAGS: u16 = 0xFF0F;
+    pub const INTERRUPTS_ENABLE: u16 = 0xFFFF;
 }
 
 /// Interrupt registers, located at $FF0F and $FFFF.
@@ -54,7 +54,7 @@ impl InterruptRegisters {
     }
 
     /// Get the interrupt jump address.
-    pub fn get_interrupt_address(&mut self) -> Option<usize> {
+    pub fn get_interrupt_address(&mut self) -> Option<u16> {
         let interrupts = self.enable & self.flags;
 
         if interrupts & 0x1F == 0 {
@@ -78,7 +78,7 @@ impl InterruptRegisters {
 }
 
 impl Memory for InterruptRegisters {
-    fn read(&self, address: usize) -> u8 {
+    fn read(&self, address: u16) -> u8 {
         match address {
             address::INTERRUPTS_ENABLE => self.enable,
             address::INTERRUPTS_FLAGS => self.flags,
@@ -86,7 +86,7 @@ impl Memory for InterruptRegisters {
         }
     }
 
-    fn write(&mut self, address: usize, value: u8) {
+    fn write(&mut self, address: u16, value: u8) {
         match address {
             address::INTERRUPTS_ENABLE => self.enable = value,
             address::INTERRUPTS_FLAGS => self.flags = value,
