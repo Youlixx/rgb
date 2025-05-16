@@ -1,94 +1,162 @@
-use super::{
-    interrupts::{self, Interrupts},
-    timer::{self, ConsoleTimer, Timer},
-};
+use super::interrupts::Interrupt;
 
+/// Memory trait.
 pub trait Memory {
-    fn silent_read(&self, address: usize) -> u8;
-    fn silent_write(&mut self, address: usize, value: u8);
+    /// Read a value from the memory.
+    ///
+    /// The address is always given within the RELATIVE address space (starting at
+    /// address 0x0), and the [`MemoryMap`] is responsible for ensuring the address
+    /// validity, therefore it should never be out of bound.
+    fn read(&self, address: u16) -> u8;
+
+    /// Write a value to the memory.
+    ///
+    /// The address is always given within the RELATIVE address space (starting at
+    /// address 0x0), and the [`MemoryMap`] is responsible for ensuring the address
+    /// validity, therefore it should never be out of bound.
+    fn write(&mut self, address: u16, value: u8);
 }
 
-pub trait Tickable<T> {
-    fn tick(&mut self) -> T;
+/// Component trait.
+pub trait Component: Memory {
+    /// Tick the component.
+    ///return
+    /// Components may issue an interrupt to communicate to the CPU by returning the
+    /// corresponding interrupt.
+    fn tick(&mut self) -> Option<Interrupt> {
+        None
+    }
 }
 
-struct DefaultSerialPort {}
+/// MemoryMap trait.
+pub trait MemoryMap {
+    /// Read a value from the memory.
+    ///
+    /// The address is always given within the console address space (16-bit address).
+    /// This function should panic if the address is not mapped to any sub-memory.
+    fn read(&self, address: u16) -> u8;
 
-impl Memory for DefaultSerialPort {
-    fn silent_read(&self, _: usize) -> u8 {
-        0
+    /// Write a value to the memory.
+    ///
+    /// The address is always given within the console address space (16-bit address).
+    /// This function should panic if the address is not mapped to any sub-memory.
+    fn write(&mut self, address: u16, value: u8);
+
+    /// Tick all the internal components.
+    fn tick(&mut self);
+
+    /// Check whether or not an enabled interrupt signal is pending.
+    fn should_interrupt(&self) -> bool;
+
+    /// Get the interrupt jump address.
+    fn get_interrupt_address(&mut self) -> Option<u16>;
+
+    /// Perform a read operation and tick the internal components.
+    ///
+    /// The components are always ticked first, the the read is performed. The address
+    /// is always given within the console address space (16-bit address). This function
+    /// should panic if the address is not mapped to any sub-memory.
+    fn cycle_read(&mut self, address: u16) -> u8 {
+        self.tick();
+        self.read(address)
     }
 
-    fn silent_write(&mut self, _: usize, _: u8) {}
+    /// Perform a write operation and tick the internal components.
+    ///
+    /// The components are always ticked first, the the write is performed. The address
+    /// is always given within the console address space (16-bit address). This function
+    /// should panic if the address is not mapped to any sub-memory.
+    fn cycle_write(&mut self, address: u16, value: u8) {
+        self.tick();
+        self.write(address, value);
+    }
 }
 
-pub struct ConsoleMemory {
-    interrupts: Interrupts,
+#[macro_export]
+macro_rules! define_memory_map {
+    (
+        $MapName:ident,
+        $($name:ident : $type:ty => $range:tt),* $(,)?
+    ) => {
+        pub struct $MapName {
+            $($name: $type),*,
+            interrupt_registers: InterruptRegisters,
+        }
 
-    memory: Vec<u8>, // TODO: temporary, not everything needs to be mapped... + mirroring
-    timer: Box<dyn Timer>,
-    serial_port: Box<dyn Memory>,
+        impl $MapName {
+            pub fn new($($name: $type),*) -> Self {
+                Self {
+                    $($name),*,
+                    interrupt_registers: InterruptRegisters::new()
+                }
+            }
+        }
+
+        impl MemoryMap for $MapName {
+            fn read(&self, address: u16) -> u8 {
+                match address {
+                    0xFF0F | 0xFFFF => self.interrupt_registers.read(address),
+                    $(define_memory_map!(@make_pattern $range) => self.$name.read(address - define_memory_map!(@make_offset $range)),)*
+                    #[allow(unreachable_patterns)]
+                    _ => panic!("Tried to read from an unmapped address.")
+                }
+            }
+
+            fn write(&mut self, address: u16, value: u8) {
+                match address {
+                    0xFF0F | 0xFFFF => self.interrupt_registers.write(address, value),
+                    $(define_memory_map!(@make_pattern $range) => self.$name.write(address - define_memory_map!(@make_offset $range), value),)*
+                    #[allow(unreachable_patterns)]
+                    _ => panic!("Tried to write to an unmapped address.")
+                }
+            }
+
+            fn tick(&mut self) {
+                $(
+                    if let Some(interrupt) = self.$name.tick() {
+                        self.interrupt_registers.update_flags(interrupt);
+                    }
+                )*
+            }
+
+            fn should_interrupt(&self) -> bool {
+                self.interrupt_registers.should_interrupt()
+            }
+
+            fn get_interrupt_address(&mut self) -> Option<u16> {
+                self.interrupt_registers.get_interrupt_address()
+            }
+        }
+    };
+
+    (@make_pattern [ $start:expr ; $end:expr ]) => { $start..=$end };
+    (@make_pattern $start:expr) => { $start };
+
+    (@make_offset [ $start:expr ; $end:expr ]) => { $start };
+    (@make_offset $start:expr) => { $start };
 }
 
-impl ConsoleMemory {
-    pub fn new(
-        rom: &[u8],
-        timer: Option<Box<dyn Timer>>,
-        serial_port: Option<Box<dyn Memory>>,
-    ) -> Self {
-        let mut memory = vec![0; 0x10000];
+pub struct RawMemoryChunk<const SIZE: usize = 0x10000> {
+    memory: [u8; SIZE],
+}
+
+impl<const SIZE: usize> RawMemoryChunk<SIZE> {
+    pub fn new(rom: &[u8]) -> Self {
+        let mut memory = [0u8; SIZE];
         memory[..rom.len()].copy_from_slice(rom);
 
-        Self {
-            memory,
-            interrupts: Interrupts::new(),
-            timer: timer.unwrap_or(Box::new(ConsoleTimer::new())),
-            serial_port: serial_port.unwrap_or(Box::new(DefaultSerialPort {})),
-        }
-    }
-
-    pub fn tick(&mut self) {
-        self.interrupts.update_flags(self.timer.tick());
-    }
-
-    pub fn cycle_read(&mut self, address: usize) -> u8 {
-        self.tick();
-        self.silent_read(address)
-    }
-
-    pub fn cycle_write(&mut self, address: usize, value: u8) {
-        self.tick();
-        self.silent_write(address, value);
-    }
-
-    pub fn should_interrupt(&self) -> bool {
-        self.interrupts.should_interrupt()
-    }
-
-    pub fn get_interrupt_address(&mut self) -> Option<usize> {
-        self.interrupts.get_interrupt_address()
+        Self { memory }
     }
 }
 
-// TODO branching for IO registers, maybe separate struct for em
-impl Memory for ConsoleMemory {
-    fn silent_read(&self, address: usize) -> u8 {
-        match address {
-            0xFF01..=0xFF02 => self.serial_port.silent_read(address),
-            timer::address::DIV..=timer::address::TAC => self.timer.silent_read(address),
-            interrupts::address::INTERRUPTS_FLAGS => self.interrupts.read_flags(),
-            interrupts::address::INTERRUPTS_ENABLE => self.interrupts.read_enable(),
-            address => self.memory[address],
-        }
+impl<const SIZE: usize> Memory for RawMemoryChunk<SIZE> {
+    fn read(&self, address: u16) -> u8 {
+        self.memory[address as usize]
     }
 
-    fn silent_write(&mut self, address: usize, value: u8) {
-        match address {
-            0xFF01..=0xFF02 => self.serial_port.silent_write(address, value),
-            timer::address::DIV..=timer::address::TAC => self.timer.silent_write(address, value),
-            interrupts::address::INTERRUPTS_FLAGS => self.interrupts.write_flags(value),
-            interrupts::address::INTERRUPTS_ENABLE => self.interrupts.write_enable(value),
-            address => self.memory[address] = value,
-        };
+    fn write(&mut self, address: u16, value: u8) {
+        self.memory[address as usize] = value;
     }
 }
+
+impl Component for RawMemoryChunk {}

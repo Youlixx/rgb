@@ -1,6 +1,6 @@
 use super::{
-    interrupts::{InterruptEmitter, InterruptSource},
-    memory::Memory,
+    interrupts::Interrupt,
+    memory::{Component, Memory},
 };
 
 pub mod address {
@@ -9,9 +9,6 @@ pub mod address {
     pub const TMA: usize = 0xFF06;
     pub const TAC: usize = 0xFF07;
 }
-
-pub trait Timer: Memory + InterruptEmitter {}
-impl<T: Memory + InterruptEmitter> Timer for T {}
 
 pub struct ConsoleTimer {
     divider: u16,
@@ -33,8 +30,31 @@ impl ConsoleTimer {
     }
 }
 
-impl InterruptEmitter for ConsoleTimer {
-    fn tick(&mut self) -> Option<InterruptSource> {
+// TODO: use const register names!
+impl Memory for ConsoleTimer {
+    fn read(&self, address: u16) -> u8 {
+        match address {
+            0 => (self.divider >> 8) as u8,
+            1 => self.counter,
+            2 => self.modulo,
+            3 => self.control & 0x07,
+            _ => unreachable!(),
+        }
+    }
+
+    fn write(&mut self, address: u16, value: u8) {
+        match address {
+            0 => self.divider = 0,
+            1 => self.counter = value,
+            2 => self.modulo = value,
+            3 => self.control = value & 0x07,
+            _ => unreachable!(),
+        };
+    }
+}
+
+impl Component for ConsoleTimer {
+    fn tick(&mut self) -> Option<Interrupt> {
         let issue_interrupt = self.tima_overflow;
 
         if issue_interrupt {
@@ -64,28 +84,6 @@ impl InterruptEmitter for ConsoleTimer {
 
         self.divider = self.divider.wrapping_add(1);
 
-        issue_interrupt.then_some(InterruptSource::Timer)
-    }
-}
-
-impl Memory for ConsoleTimer {
-    fn silent_read(&self, address: usize) -> u8 {
-        match address {
-            address::DIV => (self.divider >> 8) as u8,
-            address::TIMA => self.counter,
-            address::TMA => self.modulo,
-            address::TAC => self.control & 0x07,
-            _ => unreachable!(),
-        }
-    }
-
-    fn silent_write(&mut self, address: usize, value: u8) {
-        match address {
-            address::DIV => self.divider = 0,
-            address::TIMA => self.counter = value,
-            address::TMA => self.modulo = value,
-            address::TAC => self.control = value & 0x07,
-            _ => unreachable!(),
-        };
+        issue_interrupt.then_some(Interrupt::Timer)
     }
 }
