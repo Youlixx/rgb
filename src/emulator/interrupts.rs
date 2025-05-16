@@ -2,6 +2,7 @@ use super::memory::Memory;
 
 /// Interrupt source enumeration.
 #[repr(u8)]
+#[derive(Debug)]
 pub enum Interrupt {
     VBlank = 0x01,
     Lcd = 0x02,

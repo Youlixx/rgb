@@ -16,15 +16,6 @@ pub trait Memory {
 /// Component trait.
 pub trait Component: Memory {
     /// Tick the component. May return an interrupt to communicate to the CPU.
-    fn tick(&mut self) -> Option<Interrupt>;
-}
-
-/// Inhert memories can be tickable, but they never issue any interrupt.
-impl<T> Component for T
-where
-    T: Memory,
-{
-    /// Since the component is a simple memory, it never issue any interrupt.
     fn tick(&mut self) -> Option<Interrupt> {
         None
     }
@@ -105,3 +96,33 @@ impl Default for MemoryMap {
         Self::new(vec![])
     }
 }
+
+pub struct RawMemoryChunk<const SIZE: usize = 0x10000> {
+    memory: [u8; SIZE]
+}
+
+impl<const SIZE: usize> RawMemoryChunk<SIZE> {
+    pub fn new(rom: &[u8]) -> Self {
+        let mut memory = [0u8; SIZE];
+        memory[..rom.len()].copy_from_slice(rom);
+
+        Self { memory }
+    }
+}
+
+impl<const SIZE: usize> Memory for RawMemoryChunk<SIZE> {
+    fn read(&self, address: usize) -> Option<u8> {
+        (address < SIZE && address != 0xFF0F && address != 0xFFFF).then(|| self.memory[address])
+    }
+
+    fn write(&mut self, address: usize, value: u8) -> bool {
+        if address < SIZE && address != 0xFF0F && address != 0xFFFF {
+            self.memory[address] = value;
+            true
+        } else {
+            false
+        }
+    }
+}
+
+impl Component for RawMemoryChunk {}

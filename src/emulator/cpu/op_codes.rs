@@ -2460,9 +2460,8 @@ pub const OP_CODE_FUNCTION_TABLE: [fn(&mut Cpu); 256] = [
 #[cfg(test)]
 mod tests {
     use crate::emulator::cpu::{status_flag, Cpu};
-    use crate::emulator::interrupts::InterruptEmitter;
-    use crate::emulator::memory::{ConsoleMemory, Memory};
-    use crate::emulator::timer;
+    use crate::emulator::interrupts::Interrupt;
+    use crate::emulator::memory::{Component, Memory, MemoryMap, RawMemoryChunk};
 
     enum BranchCondition {
         NonZero,
@@ -2839,15 +2838,17 @@ mod tests {
     }
 
     impl Memory for AbsoluteCycleCounter {
-        fn silent_read(&self, _: usize) -> u8 {
-            self.cycle_counter
+        fn read(&self, address: usize) -> Option<u8> {
+            (address == AbsoluteCycleCounter::RESERVED_ADDRESS).then_some(self.cycle_counter)
         }
 
-        fn silent_write(&mut self, _: usize, _: u8) {}
+        fn write(&mut self, address: usize, _: u8) -> bool {
+            address == AbsoluteCycleCounter::RESERVED_ADDRESS
+        }
     }
 
-    impl InterruptEmitter for AbsoluteCycleCounter {
-        fn tick(&mut self) -> Option<crate::emulator::interrupts::InterruptSource> {
+    impl Component for AbsoluteCycleCounter {
+        fn tick(&mut self) -> Option<Interrupt> {
             self.cycle_counter = self.cycle_counter.wrapping_add(1);
             None
         }
@@ -2859,14 +2860,18 @@ mod tests {
                 cycle_counter: 0u8.wrapping_sub(offset),
             }
         }
+
+        /// Debug address, well outside the normal console address range.
+        /// Reading the emulator at this address will provide the number of
+        /// elapsed CPU cycle.
+        const RESERVED_ADDRESS: usize = 0xFFFFFFFF;
     }
 
     fn new_cycle_counted_cpu(rom: &[u8], offset: u8) -> Cpu {
-        Cpu::new(ConsoleMemory::new(
-            rom,
-            Some(Box::new(AbsoluteCycleCounter::new(offset))),
-            None,
-        ))
+        Cpu::new(MemoryMap::new(vec![
+            Box::new(RawMemoryChunk::<0x10000>::new(rom)),
+            Box::new(AbsoluteCycleCounter::new(offset)),
+        ]))
     }
 
     #[test]
@@ -2885,7 +2890,7 @@ mod tests {
                 let mut cpu = new_cycle_counted_cpu(rom.as_slice(), 0);
                 cpu.tick();
 
-                let timing = cpu.memory.silent_read(timer::address::DIV);
+                let timing = cpu.memory.read(AbsoluteCycleCounter::RESERVED_ADDRESS);
                 assert_eq!(
                     expected_timing, timing,
                     "Expected a constant time of {} for op code {:#04x}, got {} instead",
@@ -2918,7 +2923,7 @@ mod tests {
                 cpu.tick();
                 cpu.tick();
 
-                let timing = cpu.memory.silent_read(timer::address::DIV);
+                let timing = cpu.memory.read(AbsoluteCycleCounter::RESERVED_ADDRESS);
                 assert_eq!(
                     expected_timing, timing,
                     "Expected a time of {} for {:#04x} with flags {:#04x}, got {} instead",

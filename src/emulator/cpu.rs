@@ -4,7 +4,7 @@ mod register;
 
 use self::{op_codes::OP_CODE_FUNCTION_TABLE, register::CpuRegisters};
 
-use super::memory::ConsoleMemory;
+use super::memory::MemoryMap;
 
 mod status_flag {
     pub const ZERO: u8 = 0x80;
@@ -14,7 +14,7 @@ mod status_flag {
 }
 
 pub struct Cpu {
-    memory: ConsoleMemory,
+    memory: MemoryMap,
     program_counter: u16,
 
     registers: CpuRegisters,
@@ -26,7 +26,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(memory: ConsoleMemory) -> Self {
+    pub fn new(memory: MemoryMap) -> Self {
         Self {
             memory,
             program_counter: 0x0100,
@@ -56,7 +56,7 @@ impl Cpu {
     }
 
     fn handle_interrupts(&mut self) {
-        if !self.memory.should_interrupt() {
+        if !self.memory.interrupt_registers.should_interrupt() {
             return;
         } else {
             self.halted = false;
@@ -66,7 +66,7 @@ impl Cpu {
             return;
         }
 
-        if let Some(program_counter) = self.memory.get_interrupt_address() {
+        if let Some(program_counter) = self.memory.interrupt_registers.get_interrupt_address() {
             self.stack_push(self.program_counter);
             self.interrupt_master_enabled = false;
             self.halted = false;
@@ -482,7 +482,7 @@ impl Cpu {
 mod tests {
     use std::{cell::RefCell, rc::Rc};
 
-    use crate::emulator::memory::{ConsoleMemory, Memory};
+    use crate::emulator::{memory::{Component, Memory, MemoryMap, RawMemoryChunk}, timer::ConsoleTimer};
 
     use super::Cpu;
 
@@ -492,11 +492,11 @@ mod tests {
     }
 
     impl Memory for Rc<RefCell<TestSerialPort>> {
-        fn silent_read(&self, _: usize) -> u8 {
-            0
+        fn read(&self, address: usize) -> Option<u8> {
+            (address == 0xFF01).then_some(0)
         }
 
-        fn silent_write(&mut self, address: usize, value: u8) {
+        fn write(&mut self, address: usize, value: u8) -> bool {
             if address == 0xFF01 {
                 let mut logger = self.borrow_mut();
                 logger.logs.push(value as char);
@@ -504,9 +504,15 @@ mod tests {
                 if logger.logs.ends_with("Passed") || logger.logs.ends_with("Failed") {
                     logger.completed = true;
                 }
+
+                true
+            } else {
+                false
             }
         }
     }
+
+    impl Component for Rc<RefCell<TestSerialPort>> {}
 
     impl TestSerialPort {
         fn new() -> Rc<RefCell<Self>> {
@@ -519,11 +525,11 @@ mod tests {
 
     fn run_test_rom(rom: &[u8]) {
         let logger = TestSerialPort::new();
-        let mut cpu = Cpu::new(ConsoleMemory::new(
-            rom,
-            None,
-            Some(Box::new(logger.clone())),
-        ));
+        let mut cpu = Cpu::new(MemoryMap::new(vec![
+            Box::new(logger.clone()),
+            Box::new(ConsoleTimer::new()),
+            Box::new(RawMemoryChunk::new(rom))
+        ]));
 
         while !logger.borrow().completed {
             cpu.tick();
