@@ -81,28 +81,22 @@ impl Memory for InterruptRegisters {
     /// Read a value from the component memory. The address is always given in
     /// the absolute address space of the emulator. If the address is out of
     /// bound of the component memory, the function should return None.
-    fn read(&self, address: usize) -> Option<u8> {
+    fn read(&self, address: usize) -> u8 {
         match address {
-            address::INTERRUPTS_ENABLE => Some(self.enable),
-            address::INTERRUPTS_FLAGS => Some(self.flags),
-            _ => None,
+            address::INTERRUPTS_ENABLE => self.enable,
+            address::INTERRUPTS_FLAGS => self.flags,
+            _ => panic!("Tried to read an unmapped address from the interrupt registers."),
         }
     }
 
     /// Write a value to the component memory. The address is always given in
     /// the absolute address space of the emulator. If the address is out of
     /// bound of the component memory, the function should return None.
-    fn write(&mut self, address: usize, value: u8) -> bool {
+    fn write(&mut self, address: usize, value: u8) {
         match address {
-            address::INTERRUPTS_ENABLE => {
-                self.enable = value;
-                true
-            }
-            address::INTERRUPTS_FLAGS => {
-                self.flags = value;
-                true
-            }
-            _ => false,
+            address::INTERRUPTS_ENABLE => self.enable = value,
+            address::INTERRUPTS_FLAGS => self.flags = value,
+            _ => panic!("Tried to write to an unmapped address from the interrupt registers."),
         }
     }
 }

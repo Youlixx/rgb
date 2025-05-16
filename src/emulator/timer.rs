@@ -30,33 +30,26 @@ impl ConsoleTimer {
     }
 }
 
+// TODO: use const register names!
 impl Memory for ConsoleTimer {
-    fn read(&self, address: usize) -> Option<u8> {
-        (address::DIV..=address::TAC)
-            .contains(&address)
-            .then(|| match address {
-                address::DIV => (self.divider >> 8) as u8,
-                address::TIMA => self.counter,
-                address::TMA => self.modulo,
-                address::TAC => self.control & 0x07,
-                _ => unreachable!(),
-            })
+    fn read(&self, address: usize) -> u8 {
+        match address {
+            0 => (self.divider >> 8) as u8,
+            1 => self.counter,
+            2 => self.modulo,
+            3 => self.control & 0x07,
+            _ => unreachable!(),
+        }
     }
 
-    fn write(&mut self, address: usize, value: u8) -> bool {
-        if (address::DIV..=address::TAC).contains(&address) {
-            match address {
-                address::DIV => self.divider = 0,
-                address::TIMA => self.counter = value,
-                address::TMA => self.modulo = value,
-                address::TAC => self.control = value & 0x07,
-                _ => unreachable!(),
-            }
-
-            true
-        } else {
-            false
-        }
+    fn write(&mut self, address: usize, value: u8) {
+        match address {
+            0 => self.divider = 0,
+            1 => self.counter = value,
+            2 => self.modulo = value,
+            3 => self.control = value & 0x07,
+            _ => unreachable!(),
+        };
     }
 }
 

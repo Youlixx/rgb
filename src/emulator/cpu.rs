@@ -14,7 +14,7 @@ mod status_flag {
 }
 
 pub struct Cpu {
-    memory: MemoryMap,
+    memory: Box<dyn MemoryMap>,
     program_counter: u16,
 
     registers: CpuRegisters,
@@ -26,9 +26,9 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(memory: MemoryMap) -> Self {
+    pub fn new(memory: Box<dyn MemoryMap>) -> Self {
         Self {
-            memory,
+            memory: memory,
             program_counter: 0x0100,
             registers: CpuRegisters::new(),
             stack_pointer: 0xFFF4,
@@ -56,7 +56,7 @@ impl Cpu {
     }
 
     fn handle_interrupts(&mut self) {
-        if !self.memory.interrupt_registers.should_interrupt() {
+        if !self.memory.should_interrupt() {
             return;
         } else {
             self.halted = false;
@@ -66,7 +66,7 @@ impl Cpu {
             return;
         }
 
-        if let Some(program_counter) = self.memory.interrupt_registers.get_interrupt_address() {
+        if let Some(program_counter) = self.memory.get_interrupt_address() {
             self.stack_push(self.program_counter);
             self.interrupt_master_enabled = false;
             self.halted = false;
@@ -482,32 +482,65 @@ impl Cpu {
 mod tests {
     use std::{cell::RefCell, rc::Rc};
 
-    use crate::emulator::{memory::{Component, Memory, MemoryMap, RawMemoryChunk}, timer::ConsoleTimer};
+    use crate::{
+        define_memory_map,
+        emulator::{
+            interrupts::{Interrupt, InterruptRegisters},
+            memory::{Component, Memory, MemoryMap, RawMemoryChunk},
+            timer::ConsoleTimer,
+        },
+    };
 
     use super::Cpu;
 
-    struct TestSerialPort {
+    pub struct CycleCounter(u8);
+
+    impl Memory for CycleCounter {
+        fn read(&self, _: usize) -> u8 {
+            self.0
+        }
+
+        fn write(&mut self, _: usize, _: u8) {}
+    }
+
+    impl Component for CycleCounter {
+        fn tick(&mut self) -> Option<Interrupt> {
+            self.0 = self.0.wrapping_add(1);
+            None
+        }
+    }
+
+    define_memory_map!(
+        CycleCounterMemoryMap,
+        counter: CycleCounter => 0xF000,
+        memory: RawMemoryChunk => [0x0000; 0x10000]
+    );
+
+    pub fn new_cycle_counted_cpu(rom: &[u8], offset: u8) -> Cpu {
+        Cpu::new(Box::new(CycleCounterMemoryMap::new(
+            CycleCounter(offset),
+            RawMemoryChunk::new(rom),
+        )))
+    }
+
+    pub struct TestSerialPort {
         logs: String,
         completed: bool,
     }
 
     impl Memory for Rc<RefCell<TestSerialPort>> {
-        fn read(&self, address: usize) -> Option<u8> {
-            (address == 0xFF01).then_some(0)
+        fn read(&self, _: usize) -> u8 {
+            0
         }
 
-        fn write(&mut self, address: usize, value: u8) -> bool {
-            if address == 0xFF01 {
-                let mut logger = self.borrow_mut();
-                logger.logs.push(value as char);
+        fn write(&mut self, address: usize, value: u8) {
+            if address == 0xFF01 {}
 
-                if logger.logs.ends_with("Passed") || logger.logs.ends_with("Failed") {
-                    logger.completed = true;
-                }
+            let mut logger = self.borrow_mut();
+            logger.logs.push(value as char);
 
-                true
-            } else {
-                false
+            if logger.logs.ends_with("Passed") || logger.logs.ends_with("Failed") {
+                logger.completed = true;
             }
         }
     }
@@ -523,13 +556,20 @@ mod tests {
         }
     }
 
+    define_memory_map!(
+        TestMemoryMap,
+        logger: Rc<RefCell<TestSerialPort>> => [0xFF01; 0xFF02],
+        timer: ConsoleTimer => [0xFF04; 0xFF08],
+        memory: RawMemoryChunk => [0x0000; 0x10000]
+    );
+
     fn run_test_rom(rom: &[u8]) {
         let logger = TestSerialPort::new();
-        let mut cpu = Cpu::new(MemoryMap::new(vec![
-            Box::new(logger.clone()),
-            Box::new(ConsoleTimer::new()),
-            Box::new(RawMemoryChunk::new(rom))
-        ]));
+        let mut cpu = Cpu::new(Box::new(TestMemoryMap::new(
+            logger.clone(),
+            ConsoleTimer::new(),
+            RawMemoryChunk::new(rom),
+        )));
 
         while !logger.borrow().completed {
             cpu.tick();
