@@ -2,7 +2,7 @@ mod cb_codes;
 mod op_codes;
 mod register;
 
-use self::{op_codes::OP_CODE_FUNCTION_TABLE, register::CpuRegisters};
+use self::register::CpuRegisters;
 
 use super::memory::MemoryMap;
 
@@ -13,8 +13,8 @@ mod status_flag {
     pub const CARRY: u8 = 0x10;
 }
 
-pub struct Cpu {
-    memory: Box<dyn MemoryMap>,
+pub struct Cpu<M: MemoryMap> {
+    memory: M,
     program_counter: u16,
 
     registers: CpuRegisters,
@@ -25,10 +25,10 @@ pub struct Cpu {
     halted: bool,
 }
 
-impl Cpu {
-    pub fn new(memory: Box<dyn MemoryMap>) -> Self {
+impl<M: MemoryMap> Cpu<M> {
+    pub fn new(memory: M) -> Self {
         Self {
-            memory: memory,
+            memory,
             program_counter: 0x0100,
             registers: CpuRegisters::new(),
             stack_pointer: 0xFFF4,
@@ -52,7 +52,7 @@ impl Cpu {
         }
 
         let opcode = self.fetch_u8();
-        OP_CODE_FUNCTION_TABLE[opcode as usize](self);
+        Self::OP_CODE_FUNCTION_TABLE[opcode as usize](self);
     }
 
     fn handle_interrupts(&mut self) {
@@ -132,7 +132,7 @@ impl Cpu {
 }
 
 // TODO move elsewhere
-impl Cpu {
+impl<M: MemoryMap> Cpu<M> {
     fn run_add_u8_and_update_flags(&mut self, operand: u8) {
         let result: u16 = (self.registers.a() as u16).wrapping_add(operand as u16);
         self.registers.reset_status_flags();
@@ -511,16 +511,16 @@ mod tests {
     }
 
     define_memory_map!(
-        CycleCounterMemoryMap,
+        CycleCountedMemoryMap,
         counter: CycleCounter => 0x00FF,
         memory: RawMemoryChunk => [0x0000; 0xFFFF]
     );
 
-    pub fn new_cycle_counted_cpu(rom: &[u8], offset: u8) -> Cpu {
-        Cpu::new(Box::new(CycleCounterMemoryMap::new(
+    pub fn new_cycle_counted_cpu(rom: &[u8], offset: u8) -> Cpu<CycleCountedMemoryMap> {
+        Cpu::new(CycleCountedMemoryMap::new(
             CycleCounter(0u8.wrapping_sub(offset)),
             RawMemoryChunk::new(rom),
-        )))
+        ))
     }
 
     pub struct TestSerialPort {
@@ -563,11 +563,11 @@ mod tests {
 
     fn run_test_rom(rom: &[u8]) {
         let logger = TestSerialPort::new();
-        let mut cpu = Cpu::new(Box::new(TestMemoryMap::new(
+        let mut cpu = Cpu::new(TestMemoryMap::new(
             logger.clone(),
             ConsoleTimer::new(),
             RawMemoryChunk::new(rom),
-        )));
+        ));
 
         while !logger.borrow().completed {
             cpu.tick();
