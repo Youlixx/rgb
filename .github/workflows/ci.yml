@@ -8,8 +8,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - run: cargo test --all-features
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - name: Get test roms
+        run: |
+          mkdir roms
+          cd roms
+          git clone https://github.com/retrio/gb-test-roms.git
+          cd ..
+      - name: Run cargo test
+        run: cargo test --all --verbose
 
   formatting:
     name: cargo fmt
