@@ -4,16 +4,16 @@ use super::interrupts::Interrupt;
 pub trait Memory {
     /// Read a value from the memory.
     ///
-    /// The address is always given within the RELATIVE address space (starting at
-    /// address 0x0), and the [`MemoryMap`] is responsible for ensuring the address
-    /// validity, therefore it should never be out of bound.
+    /// The address is always given within the ABSOLUTE address space (0x0000-0xFFFF),
+    /// and the [`MemoryMap`] is responsible for ensuring the address validity,
+    /// therefore it should never be out of bound.
     fn read(&self, address: u16) -> u8;
 
     /// Write a value to the memory.
     ///
-    /// The address is always given within the RELATIVE address space (starting at
-    /// address 0x0), and the [`MemoryMap`] is responsible for ensuring the address
-    /// validity, therefore it should never be out of bound.
+    /// The address is always given within the ABSOLUTE address space (0x0000-0xFFFF),
+    /// and the [`MemoryMap`] is responsible for ensuring the address validity,
+    /// therefore it should never be out of bound.
     fn write(&mut self, address: u16, value: u8);
 }
 
@@ -75,8 +75,8 @@ pub trait MemoryMap {
 #[macro_export]
 macro_rules! define_memory_map {
     (
-        $MapName:ident,
-        $($name:ident : $type:ty => $range:tt),* $(,)?
+        $MapName:ident
+        $($name:ident : $type:ty => $($range:tt),*);* ;
     ) => {
         pub struct $MapName {
             $($name: $type),*,
@@ -96,7 +96,7 @@ macro_rules! define_memory_map {
             fn read(&self, address: u16) -> u8 {
                 match address {
                     0xFF0F | 0xFFFF => self.interrupt_registers.read(address),
-                    $(define_memory_map!(@make_pattern $range) => self.$name.read(address - define_memory_map!(@make_offset $range)),)*
+                    $($(define_memory_map!(@make_pattern $range))|* => self.$name.read(address),)*
                     #[allow(unreachable_patterns)]
                     _ => panic!("Tried to read from an unmapped address.")
                 }
@@ -105,7 +105,7 @@ macro_rules! define_memory_map {
             fn write(&mut self, address: u16, value: u8) {
                 match address {
                     0xFF0F | 0xFFFF => self.interrupt_registers.write(address, value),
-                    $(define_memory_map!(@make_pattern $range) => self.$name.write(address - define_memory_map!(@make_offset $range), value),)*
+                    $($(define_memory_map!(@make_pattern $range))|* => self.$name.write(address, value),)*
                     #[allow(unreachable_patterns)]
                     _ => panic!("Tried to write to an unmapped address.")
                 }
@@ -131,9 +131,6 @@ macro_rules! define_memory_map {
 
     (@make_pattern [ $start:expr ; $end:expr ]) => { $start..=$end };
     (@make_pattern $start:expr) => { $start };
-
-    (@make_offset [ $start:expr ; $end:expr ]) => { $start };
-    (@make_offset $start:expr) => { $start };
 }
 
 pub struct RawMemoryChunk<const SIZE: usize = 0x10000> {

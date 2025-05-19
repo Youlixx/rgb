@@ -15,9 +15,9 @@ mod status_flag {
 
 pub struct Cpu<M: MemoryMap> {
     memory: M,
-    program_counter: u16,
 
     registers: CpuRegisters,
+    program_counter: u16,
     stack_pointer: u16,
 
     interrupt_master_toggle: bool,
@@ -53,6 +53,10 @@ impl<M: MemoryMap> Cpu<M> {
 
         let opcode = self.fetch_u8();
         Self::OP_CODE_FUNCTION_TABLE[opcode as usize](self);
+    }
+
+    pub fn memory(&self) -> &M {
+        &self.memory
     }
 
     fn handle_interrupts(&mut self) {
@@ -480,8 +484,6 @@ impl<M: MemoryMap> Cpu<M> {
 
 #[cfg(test)]
 mod tests {
-    use std::{cell::RefCell, rc::Rc};
-
     use crate::{
         define_memory_map,
         emulator::{
@@ -511,9 +513,9 @@ mod tests {
     }
 
     define_memory_map!(
-        CycleCountedMemoryMap,
-        counter: CycleCounter => 0x00FF,
-        memory: RawMemoryChunk => [0x0000; 0xFFFF]
+        CycleCountedMemoryMap
+        counter: CycleCounter => 0x00FF;
+        memory: RawMemoryChunk => [0x0000; 0xFFFF];
     );
 
     pub fn new_cycle_counted_cpu(rom: &[u8], offset: u8) -> Cpu<CycleCountedMemoryMap> {
@@ -528,52 +530,50 @@ mod tests {
         completed: bool,
     }
 
-    impl Memory for Rc<RefCell<TestSerialPort>> {
+    impl Memory for TestSerialPort {
         fn read(&self, _: u16) -> u8 {
             0
         }
 
         fn write(&mut self, _: u16, value: u8) {
-            let mut logger = self.borrow_mut();
-            logger.logs.push(value as char);
+            self.logs.push(value as char);
 
-            if logger.logs.ends_with("Passed") || logger.logs.ends_with("Failed") {
-                logger.completed = true;
+            if self.logs.ends_with("Passed") || self.logs.ends_with("Failed") {
+                self.completed = true;
             }
         }
     }
 
-    impl Component for Rc<RefCell<TestSerialPort>> {}
+    impl Component for TestSerialPort {}
 
     impl TestSerialPort {
-        fn new() -> Rc<RefCell<Self>> {
-            Rc::new(RefCell::new(Self {
+        fn new() -> Self {
+            Self {
                 logs: String::new(),
                 completed: false,
-            }))
+            }
         }
     }
 
     define_memory_map!(
-        TestMemoryMap,
-        logger: Rc<RefCell<TestSerialPort>> => 0xFF01,
-        timer: ConsoleTimer => [0xFF04; 0xFF08],
-        memory: RawMemoryChunk => [0x0000; 0xFFFF]
+        TestMemoryMap
+        logger: TestSerialPort => 0xFF01;
+        timer: ConsoleTimer => [0xFF04; 0xFF07];
+        memory: RawMemoryChunk => [0x0000; 0xFFFF];
     );
 
     fn run_test_rom(rom: &[u8]) {
-        let logger = TestSerialPort::new();
         let mut cpu = Cpu::new(TestMemoryMap::new(
-            logger.clone(),
+            TestSerialPort::new(),
             ConsoleTimer::new(),
             RawMemoryChunk::new(rom),
         ));
 
-        while !logger.borrow().completed {
+        while !cpu.memory.logger.completed {
             cpu.tick();
         }
 
-        let logs = logger.borrow().logs.clone();
+        let logs = cpu.memory.logger.logs;
         assert!(logs.contains("Passed"), "Test rom failed\n{}", logs);
     }
 
