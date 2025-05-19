@@ -4,10 +4,10 @@ use super::{
 };
 
 pub mod address {
-    pub const DIV: usize = 0xFF04;
-    pub const TIMA: usize = 0xFF05;
-    pub const TMA: usize = 0xFF06;
-    pub const TAC: usize = 0xFF07;
+    pub const DIV: u16 = 0xFF04;
+    pub const TIMA: u16 = 0xFF05;
+    pub const TMA: u16 = 0xFF06;
+    pub const TAC: u16 = 0xFF07;
 }
 
 pub struct ConsoleTimer {
@@ -30,24 +30,23 @@ impl ConsoleTimer {
     }
 }
 
-// TODO: use const register names!
 impl Memory for ConsoleTimer {
     fn read(&self, address: u16) -> u8 {
         match address {
-            0 => (self.divider >> 8) as u8,
-            1 => self.counter,
-            2 => self.modulo,
-            3 => self.control & 0x07,
+            address::DIV => (self.divider >> 8) as u8,
+            address::TIMA => self.counter,
+            address::TMA => self.modulo,
+            address::TAC => self.control & 0x07,
             _ => unreachable!(),
         }
     }
 
     fn write(&mut self, address: u16, value: u8) {
         match address {
-            0 => self.divider = 0,
-            1 => self.counter = value,
-            2 => self.modulo = value,
-            3 => self.control = value & 0x07,
+            address::DIV => self.divider = 0,
+            address::TIMA => self.counter = value,
+            address::TMA => self.modulo = value,
+            address::TAC => self.control = value & 0x07,
             _ => unreachable!(),
         };
     }
